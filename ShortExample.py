@@ -98,16 +98,19 @@ statK = k.getGaussError(significantVariables)
 #k.getGaussError(significantVariables).show()
 
 #variables can also be transformed to make calculation easier.
-k = k.toVariable()
+k.toVariable()
+
 # this causes k to be fully evaluated. neccessary precision is automatically evaluated
 print(k)
 #note: expression for k is now lost. all variables that are not in scope anymore and were used in k will now be deleted
 
 
+##xyPlot = Plot(g,h)
+##xyPlot.show()
 
+xyPlot = Plot.fromLinearRegression(g,h)
 
-
-
+xyPlot.show()
 
 
 

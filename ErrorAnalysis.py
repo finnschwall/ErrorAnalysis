@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import scipy.constants as con
 import weakref
 import math
-
+import numpy as np
 
 #internal heavily used methods
 class _Tools:
@@ -17,13 +17,10 @@ class _Tools:
         bExp =math.floor(math.log10(bT))
         cExp =math.floor(math.log10(cT))
         if cExp>1 or bExp>1:
-            print("a")
             return round(aT),round(bT),round(cT),aExp
         if abs(bExp) > abs(cExp):
-            print("b")
             return round(aT,abs(bExp)+1),round(bT,abs(bExp)+1),round(cT,abs(bExp)+1),aExp
         else:
-            print("c")
             return round(aT,abs(cExp)+1),round(bT,abs(cExp)+1),round(cT,abs(cExp)+1),aExp
 
 
@@ -127,9 +124,27 @@ class Options:
 
 
 class Plot:
-    def __init__(self,x,y,xLabel=None,yLabel=None,marker=None):
-        self.x = [x]
-        self.y = [y]
+    def linFunc(x,m,b):
+        return m*x+b
+    def fromLinearRegression(x,y,xLabel=None,yLabel=None,name=None,marker=None):
+        ret = Plot(x,y,xLabel,yLabel,name,marker)
+        popt, pcov = curve_fit(Plot.linFunc,x.value,y.value,absolute_sigma=True)
+        statErr = np.sqrt(np.diag(pcov))
+##        popt, pcov = curve_fit(Plot.linFunc,x.value,y.value,sigma=y.maxErr,absolute_sigma=True)
+##        sysErr = np.sqrt(np.diag(pcov))
+
+        minIndex = np.argmin(x.value)
+        maxIndex = np.argmax(x.value)
+        xReg= [x.value[minIndex],x.value[maxIndex]]
+        yReg = [Plot.linFunc(i,*popt) for i in xReg]
+        ret.x.append(xReg)
+        ret.y.append(yReg)
+        ret.marker.append("-")
+        return ret
+
+    def __init__(self,x,y,xLabel=None,yLabel=None,name=None,marker=None):
+        self.x = [x.value]
+        self.y = [y.value]
         if marker is None:
             self.marker = ["x"]
         else:
@@ -142,12 +157,17 @@ class Plot:
             self.yLabel = y.name
         else:
             self.yLabel = yLabel
+        if name is None:
+            self.name = [""]
+        else:
+            self.name = [name]
     def show(self):
-        xVals = self.x.value
-        yVals = self.y.value
         plt.xlabel(self.xLabel)
         plt.ylabel(self.yLabel)
-        plt.plot(xVals,yVals,self.marker)
+        for i in range(len(self.x)):
+            xVals = self.x[i]
+            yVals = self.y[i]
+            plt.plot(xVals,yVals,self.marker[i])
         plt.show()
 
 class Variable:
@@ -339,7 +359,6 @@ class Variable:
         self.__expr = self.symbol
         self.__isFormula=False
         
-        
     def returnVariable(self,name=None):
         tName =""
         if name is None:
@@ -413,7 +432,7 @@ class Variable:
         self.hasName=True
         self.name = name
 
-    #TODO fix
+    #TODO fix 
     def eval(self):
         var = _Tools.getVarsInExpr(self.__expr)
         return _Tools.eval(self.__expr,var)
