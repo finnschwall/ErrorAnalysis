@@ -61,6 +61,7 @@ class Options:
     forceNumericOutput = False
     showLatex = False
     forceEvaluation = True
+    noRounding = False
     fastMode = False
 
 
@@ -416,14 +417,17 @@ class _Tools:
         aT = a*10**-aExp
         bT = b*10**-aExp
         cT = c*10**-aExp
+        if Options.noRounding:
+            return aT,bT,cT,aExp
+        
         if b != 0:
             bExp =math.floor(math.log10(bT))
         else:
-            bExp = None
+            bExp = 1
         if c != 0:
             cExp =math.floor(math.log10(cT))
         else:
-            cExp = None
+            cExp = 1
         
         if cExp>1 or bExp>1:
             return round(aT),round(bT),round(cT),aExp

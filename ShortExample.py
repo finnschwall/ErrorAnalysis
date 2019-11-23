@@ -9,18 +9,24 @@ Options.printAsLatex=False
 #dictates wether fractions or something like tan(a) will be numericaly evaluated. standard is true
 Options.forceEvaluation = True
 
+
+
+
 #causes every output to be numeric. standard is false
 ##Options.forceNumericOutput=True
+
+#Prevents output from being rounded 
+#Options.noRounding=True
 
 ##library might take a long time on first execution
 ####Variable declaration####
 
 #Examples for declaration
 #standard constructor
-a = Variable(1,0.2,0.23,name="a")
+a = Variable(1,0,0.23,name="a")
 
 #variable with latex name. \ must be escaped or r is necessary before string
-beta = Variable(3,0.11,0.12,name=r"\beta")
+beta = Variable(50,0.11,0.12,name=r"\beta")
 
 # variable with systematic error =0
 c = Variable(5,maxErr=0.05,name="c")
