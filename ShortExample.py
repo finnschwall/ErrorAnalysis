@@ -104,14 +104,3 @@ k.toVariable()
 print(k)
 #note: expression for k is now lost. all variables that are not in scope anymore and were used in k will now be deleted
 
-
-##xyPlot = Plot(g,h)
-##xyPlot.show()
-a=Variable(91,name="a")
-print(a)
-xyPlot = Plot.fromLinearRegression(g,h)
-
-##xyPlot.show()
-
-
-
