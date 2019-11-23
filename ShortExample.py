@@ -107,10 +107,11 @@ print(k)
 
 ##xyPlot = Plot(g,h)
 ##xyPlot.show()
-
+a=Variable(91,name="a")
+print(a)
 xyPlot = Plot.fromLinearRegression(g,h)
 
-xyPlot.show()
+##xyPlot.show()
 
 
 

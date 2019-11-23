@@ -7,66 +7,7 @@ import weakref
 import math
 import numpy as np
 
-#internal heavily used methods
-class _Tools:
-    def transformToSig(a,b,c):
-        aExp = math.floor(math.log10(a))
-        aT = a*10**-aExp
-        bT = b*10**-aExp
-        cT = c*10**-aExp
-        bExp =math.floor(math.log10(bT))
-        cExp =math.floor(math.log10(cT))
-        if cExp>1 or bExp>1:
-            return round(aT),round(bT),round(cT),aExp
-        if abs(bExp) > abs(cExp):
-            return round(aT,abs(bExp)+1),round(bT,abs(bExp)+1),round(cT,abs(bExp)+1),aExp
-        else:
-            return round(aT,abs(cExp)+1),round(bT,abs(cExp)+1),round(cT,abs(cExp)+1),aExp
 
-
-    
-    def eval(expr,var):
-        listLength=0
-        for i in var:
-            if i.length > listLength:
-                listLength= i.length
-        tExpr = [expr for i in range(listLength)]
-        for curVar in var:
-            if curVar.isList:
-                for i2 in range(listLength):
-                    tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[i2])
-                    tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gaussErr[i2])
-                    tExpr[i2] = tExpr[i2].replace(curVar.mSymbol,curVar.maxErr[i2])
-            else:
-                for i2 in range(listLength):
-                    tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[0])
-                    tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gaussErr[0])
-                    tExpr[i2] = tExpr[i2].replace(curVar.mSymbol,curVar.maxErr[0])
-        if Options.forceEvaluation:
-            tExpr = [N(i) for i in tExpr]
-        return tExpr
-
-    def getVarsInExpr(expr):
-        var = []
-        for i in expr.free_symbols:
-            s = str(i)
-            if 'v' in s:
-                iId = int(str(i).replace("v",""))
-                length = Variable.varDic[iId]().length
-                var.append(Variable.varDic[iId]())
-        return var
-    def toStr(expr):
-        tempStr=""
-        if Options.printAsLatex:
-            tempStr = latex(expr)
-        else:
-            tempStr= str(expr)
-        for i in Variable.varDic:
-            num = i
-            tempStr = tempStr.replace("v"+str(num)+"v",Variable.varDic[i]().name)
-            tempStr = tempStr.replace("g"+str(num)+"g",r"\sigma_{"+Options.gaussErrName+"_{"+Variable.varDic[i]().name+"}}")
-            tempStr = tempStr.replace("m"+str(num)+"m",r"\sigma_{"+Options.maxErrName+"_{"+Variable.varDic[i]().name+"}}")
-        return tempStr
 
 class Debug:
     def createVars():
@@ -77,14 +18,14 @@ class Debug:
         e = Variable("9","0.1","0.12",name="e")
         f = Variable("11","0.3","0.23",name="f")
         return a,b,c,d,e,f
-    def getNewId():
-        return Variable.dicId
+    def getCurrentId():
+        return Variable.dicId-1
     def getId(a):
         return a._Variable__id
     def getExpr(a):
         return Variable.varDic[a._Variable__id]()._Variable__expr
     def isVariable(a):
-     return a._Variable__isFormula
+        return a._Variable__isFormula
     def getDicInfo():
         a=[]
         for i in Variable.varDic:
@@ -120,7 +61,7 @@ class Options:
     forceNumericOutput = False
     showLatex = False
     forceEvaluation = True
-
+    fastMode = False
 
 
 class Plot:
@@ -140,6 +81,8 @@ class Plot:
         ret.x.append(xReg)
         ret.y.append(yReg)
         ret.marker.append("-")
+        m = Variable(popt[0],statErr[0],name="m")
+        print(m)
         return ret
 
     def __init__(self,x,y,xLabel=None,yLabel=None,name=None,marker=None):
@@ -454,6 +397,8 @@ class Variable:
                         retStr += self.name+"_"+str(i) + " = ("+str(self.value[i])+" \pm " + str(self.gaussErr[i]) + " \pm " +str(self.maxErr[i])+")\n"
                 return retStr[:-1]
             else:
+                if self.maxErr[0] is 0 and self.gaussErr[0] is 0:
+                    return self.name +" = " +str(self.value[0])
                 a,b,c,d = _Tools.transformToSig(self.value[0],self.gaussErr[0],self.maxErr[0])
                 if Options.printAsLatex:
                     return self.name+" = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+r")\cdot 10^{"+str(d)+"}"
@@ -462,6 +407,75 @@ class Variable:
                            
     __rmul__ = __mul__
     __radd__ = __add__
+
+#internal heavily used methods
+class _Tools:
+    #TODO prevent case b=c=0
+    def transformToSig(a,b,c):
+        aExp = math.floor(math.log10(a))
+        aT = a*10**-aExp
+        bT = b*10**-aExp
+        cT = c*10**-aExp
+        if b != 0:
+            bExp =math.floor(math.log10(bT))
+        else:
+            bExp = None
+        if c != 0:
+            cExp =math.floor(math.log10(cT))
+        else:
+            cExp = None
+        
+        if cExp>1 or bExp>1:
+            return round(aT),round(bT),round(cT),aExp
+        if abs(bExp) > abs(cExp):
+            return round(aT,abs(bExp)+1),round(bT,abs(bExp)+1),round(cT,abs(bExp)+1),aExp
+        else:
+            return round(aT,abs(cExp)+1),round(bT,abs(cExp)+1),round(cT,abs(cExp)+1),aExp
+
+
+    
+    def eval(expr,var):
+        listLength=0
+        for i in var:
+            if i.length > listLength:
+                listLength= i.length
+        tExpr = [expr for i in range(listLength)]
+        for curVar in var:
+            if curVar.isList:
+                for i2 in range(listLength):
+                    tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[i2])
+                    tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gaussErr[i2])
+                    tExpr[i2] = tExpr[i2].replace(curVar.mSymbol,curVar.maxErr[i2])
+            else:
+                for i2 in range(listLength):
+                    tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[0])
+                    tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gaussErr[0])
+                    tExpr[i2] = tExpr[i2].replace(curVar.mSymbol,curVar.maxErr[0])
+        if Options.forceEvaluation:
+            tExpr = [N(i) for i in tExpr]
+        return tExpr
+
+    def getVarsInExpr(expr):
+        var = []
+        for i in expr.free_symbols:
+            s = str(i)
+            if 'v' in s:
+                iId = int(str(i).replace("v",""))
+                length = Variable.varDic[iId]().length
+                var.append(Variable.varDic[iId]())
+        return var
+    def toStr(expr):
+        tempStr=""
+        if Options.printAsLatex:
+            tempStr = latex(expr)
+        else:
+            tempStr= str(expr)
+        for i in Variable.varDic:
+            num = i
+            tempStr = tempStr.replace("v"+str(num)+"v",Variable.varDic[i]().name)
+            tempStr = tempStr.replace("g"+str(num)+"g",r"\sigma_{"+Options.gaussErrName+"_{"+Variable.varDic[i]().name+"}}")
+            tempStr = tempStr.replace("m"+str(num)+"m",r"\sigma_{"+Options.maxErrName+"_{"+Variable.varDic[i]().name+"}}")
+        return tempStr
 
 
 def Tan(a):
