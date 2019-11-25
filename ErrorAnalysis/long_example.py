@@ -1,13 +1,13 @@
-from ErrorAnalysis import *
+from error_analysis import *
 
 
 ###### Do not change properties without using methods. #####
 
 #this dictates wether print() gives string in latex style or not
-Options.printAsLatex=False
+Options.print_as_latex=False
 
 #dictates wether fractions or something like tan(a) will be numericaly evaluated. standard is true
-Options.forceEvaluation = True
+Options.force_evaluation = True
 
 
 
@@ -29,7 +29,7 @@ a = Variable(1,0,0.23,name="a")
 beta = Variable(50,0.11,0.12,name=r"\beta")
 
 # variable with systematic error =0
-c = Variable(5,maxErr=0.05,name="c")
+c = Variable(5,max_error=0.05,name="c")
 
 # variable with statistical error = 0
 d = Variable(7,0.01,name="d")
@@ -74,7 +74,7 @@ print(k)
 
 
 #name of this new variable can be set too
-k.setName("k")
+k.set_name("k")
 print(k)
 
 #Formula can also be displayed. might not work
@@ -85,13 +85,13 @@ v=k.eval()
 print(v)
 
 #get statistical error (gaussian error estimation)
-statK = k.getGaussError()
+statK = k.get_gauss_error()
 ##statK.show()
 #or as string
 print(statK)
       
 #get systematic error (maximum error estimation)
-sysK = k.getMaxError()
+sysK = k.get_max_error()
 ##sysK.show()
 #or as string
 print(sysK)
@@ -99,13 +99,13 @@ print(sysK)
 
 #only get error for specific variables
 significantVariables = [c,d]
-statK = k.getGaussError(significantVariables)
+statK = k.get_gauss_error(significantVariables)
 ##statK.show()
 #or
-#k.getGaussError(significantVariables).show()
+#k.get_gauss_error(significantVariables).show()
 
 #variables can also be transformed to make calculation easier.
-k.toVariable()
+k.to_variable()
 
 # this causes k to be fully evaluated. neccessary precision is automatically evaluated
 print(k)
@@ -117,16 +117,16 @@ xyPlot1 = Plot(g,h)
 xyPlot1.show()
 
 #directly creating a linear regression is also possible. m is slope variable b is axis shift
-xyPlot2,m,b = Plot.fromLinearRegression(g,h,name="xy",regressionName="xyReg")
+xyPlot2,m,b = Plot.from_linear_regression(g,h,name="xy",regression_name="xyReg")
 xyPlot2.show()
 
-#statistical error will be considered too.
+#statistica5l error will be considered too.
 #only first systematic error will be considered. using different systematic errors for
 #different data points is not supported and doesn't make sense in most scenarios. 
-xyPlot3,m2,b2 = Plot.fromLinearRegression(g,j,name="xy")
+xyPlot3,m2,b2 = Plot.from_linear_regression(g,j,name="xy")
 xyPlot3.show()
 
 #NOT YET FINISHED
 #plots can also be added
-xyPlot4 = xyPlot1+xyPLot3
-xyPlot4.show()
+##xyPlot4 = xyPlot1+xyPLot3
+##xyPlot4.show()
