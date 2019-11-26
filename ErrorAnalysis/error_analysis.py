@@ -77,6 +77,10 @@ class Options:
     no_rounding = False
     fast_mode = False
 
+class Regression:
+    def __init__(x,y,expr):
+        print(expr)
+    
 
 class Plot:
     def show(self):
@@ -85,12 +89,12 @@ class Plot:
         for i in range(len(self.x)):
             xVals = self.x[i]
             yVals = self.y[i]
-            if self.plotType[i] is 0:
+            if self.plot_type[i] is 0:
                 if self.has_legend:
                     plt.plot(xVals,yVals,self.marker[i],label=self.name[i])
                 else:
                     plt.plot(xVals,yVals,self.marker[i])
-            elif self.plotType[i] is 1:
+            elif self.plot_type[i] is 1:
                 if self.has_legend:
                     plt.errorbar(xVals,yVals,yerr=self.opt1[i],fmt = 'o',label=self.name[i])
                 else:
@@ -109,7 +113,7 @@ class Plot:
             minVal = y.value[np.argmin(y.value)]*10**-3
             sig = [i+minVal for i in y.gauss_error]
             popt, pcov = curve_fit(Plot.lin_func,x.value,y.value,sigma=sig,absolute_sigma=True)
-            ret.plotType[0]=1
+            ret.plot_type[0]=1
             ret.opt1[0] = y.gauss_error
         else:
             popt, pcov = curve_fit(Plot.lin_func,x.value,y.value)
@@ -121,7 +125,7 @@ class Plot:
         ret.x.append(xReg)
         ret.y.append(yReg)
         ret.marker.append("-")
-        ret.plotType.append(0)
+        ret.plot_type.append(0)
         ret.opt1.append(0)
         if regression_name is None:
             ret.name.append("Regression "+name)
@@ -140,7 +144,7 @@ class Plot:
         self.x = [x.value]
         self.y = [y.value]
         self.opt1 = [0]
-        self.plotType = [0]
+        self.plot_type = [0]
         if marker is None:
             self.marker = ["x"]
         else:
@@ -158,23 +162,39 @@ class Plot:
         else:
             self.name = [name]
             self.has_legend=True
-
+    
+    def __add__(self,other):
+        new_plot = Plot.__new__(Plot)
+        new_plot.xlabel = self.xlabel
+        new_plot.ylabel = self.ylabel
+        new_plot.x = self.x+other.x
+        new_plot.y = self.y+other.y
+        new_plot.marker = self.marker+other.marker
+        new_plot.name = self.name+other.name
+        new_plot.opt1 = self.opt1+other.opt1
+        new_plot.has_legend = self.has_legend
+        new_plot.plot_type =self.plot_type+other.plot_type
+        return new_plot
+        
 #TODO fix memory
 class Variable:
     var_dic = dict()
     dic_id = 0
     
     #very temporary solution
-    keepCont = dict()
+    #keepCont = dict()
     
     def __init__(self,value=None,gauss_error=None,max_error=None,name=None,expr=None):
         #internal variables. don't touch
+        self.dependencies = set()
         self.__isFormula=True
         self.__id = Variable.dic_id
         Variable.dic_id+=1
         #to ensure correct garbage collection
         Variable.var_dic[self.__id]=weakref.ref(self)
-        Variable.keepCont[self.__id]=self
+
+        #KEEP
+        #Variable.keepCont[self.__id]=self
         self.symbol = symbols("v"+str(self.__id)+"v")
         self.gSymbol = symbols("g"+str(self.__id)+"g")
         self.mSymbol = symbols("m"+str(self.__id)+"m")
@@ -253,14 +273,7 @@ class Variable:
         Options.force_numeric_output = temp2
         plt.axis("off")
         plt.show()
-        
-    def __imul__(self, other):
-        self.__isFormula=True
-        if(type(other)==Variable):
-            self.__expr= self.__expr*other.__expr
-        else:
-            self.__expr=self.__expr*other
-        return self
+ 
             
     def __sub__(self,other):
         temp = Variable()
@@ -272,6 +285,14 @@ class Variable:
             nexpr= self.__expr-other
             temp.__expr=nexpr
             return temp
+        
+    def __isub__(self,other):
+        self.__isFormula=True
+        if(type(other)==Variable):
+            self.__expr= self.__expr-other.__expr
+        else:
+            self.__expr=self.__expr-other
+        return self
     
     def __add__(self,other):
         temp = Variable()
@@ -283,6 +304,14 @@ class Variable:
             nexpr= self.__expr+other
             temp.__expr=nexpr
             return temp
+           
+    def __iadd__(self, other):
+        self.__isFormula=True
+        if(type(other)==Variable):
+            self.__expr= self.__expr+other.__expr
+        else:
+            self.__expr=self.__expr+other
+        return self
     
     def __mul__(self,other):
         temp = Variable()
@@ -294,6 +323,14 @@ class Variable:
             nexpr= self.__expr*other
             temp.__expr=nexpr
             return temp
+           
+    def __imul__(self, other):
+        self.__isFormula=True
+        if(type(other)==Variable):
+            self.__expr= self.__expr*other.__expr
+        else:
+            self.__expr=self.__expr*other
+        return self
 
     def __truediv__(self,other):
         temp = Variable()
@@ -305,6 +342,14 @@ class Variable:
             nexpr= self.__expr/other
             temp.__expr=nexpr
             return temp
+               
+    def __itruediv__(self, other):
+        self.__isFormula=True
+        if(type(other)==Variable):
+            self.__expr= self.__expr/other.__expr
+        else:
+            self.__expr=self.__expr/other
+        return self
 
     def __pow__(self,other):
         temp = Variable()
@@ -316,6 +361,13 @@ class Variable:
             nexpr= self.__expr**other
             temp.__expr=nexpr
             return temp
+    def __ipow__(self, other):
+        self.__isFormula=True
+        if(type(other)==Variable):
+            self.__expr= self.__expr**other.__expr
+        else:
+            self.__expr=self.__expr**other
+        return self
 
     def __rtruediv__(self,other):
         temp = Variable()
@@ -344,7 +396,7 @@ class Variable:
     def to_variable(self,name=None):
         if  name is not None:
             self.name = name
-        var = _Tools.getVarsInExpr(self.__expr)
+        var = _Tools.get_vars_in_expr(self.__expr)
         value=_Tools.eval(self.__expr,var)
         gauss_error = self.get_gauss_error(None,numeric=True)
         max_error = self.get_max_error(None,numeric=True)
@@ -363,7 +415,7 @@ class Variable:
                 tName = "temp"
         else:
             tName=name
-        var = _Tools.getVarsInExpr(self.__expr)
+        var = _Tools.get_vars_in_expr(self.__expr)
         value=_Tools.eval(self.__expr,var)
         gauss_error = self.get_gauss_error(None,numeric=True)
         max_error = self.get_max_error(None,numeric=True)
@@ -374,7 +426,7 @@ class Variable:
         return nVar
     
     def get_gauss_error(self,part_derivs=None,numeric=False):
-        var = _Tools.getVarsInExpr(self.__expr)
+        var = _Tools.get_vars_in_expr(self.__expr)
         if part_derivs is None:
             part_derivs=var
         gaussExpr = self.__calcGauss(part_derivs)
@@ -399,7 +451,7 @@ class Variable:
         return gauss_error
 
     def get_max_error(self,part_derivs=None,numeric=False):
-        var = _Tools.getVarsInExpr(self.__expr)
+        var = _Tools.get_vars_in_expr(self.__expr)
         if part_derivs is None:
             part_derivs=var
         maxExpr = self.__calcMax(part_derivs)
@@ -428,7 +480,7 @@ class Variable:
         self.name = name
 
     def eval(self):
-        var = _Tools.getVarsInExpr(self.__expr)
+        var = _Tools.get_vars_in_expr(self.__expr)
         return _Tools.eval(self.__expr,var)
 
     def __str__(self):
@@ -516,7 +568,7 @@ class _Tools:
             tExpr = [N(i) for i in tExpr]
         return tExpr
 
-    def getVarsInExpr(expr):
+    def get_vars_in_expr(expr):
         var = []
         for i in expr.free_symbols:
             s = str(i)

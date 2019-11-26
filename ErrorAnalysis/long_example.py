@@ -118,15 +118,15 @@ xyPlot1.show()
 
 #directly creating a linear regression is also possible. m is slope variable b is axis shift
 xyPlot2,m,b = Plot.from_linear_regression(g,h,name="xy",regression_name="xyReg")
-xyPlot2.show()
+##xyPlot2.show()
 
 #statistica5l error will be considered too.
 #only first systematic error will be considered. using different systematic errors for
 #different data points is not supported and doesn't make sense in most scenarios. 
 xyPlot3,m2,b2 = Plot.from_linear_regression(g,j,name="xy")
-xyPlot3.show()
+##xyPlot3.show()
 
-#NOT YET FINISHED
 #plots can also be added
-##xyPlot4 = xyPlot1+xyPLot3
-##xyPlot4.show()
+xyPlot4 = xyPlot1+xyPlot3
+
+xyPlot4.show()
