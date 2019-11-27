@@ -45,17 +45,17 @@ class Debug:
             return text
         else:
             info= ""
-            info+="\nname       =\t"+a.name
-            info+="\nID         =\t"+str(a._Variable__id)
-            info+="\nisList     =\t"+str(a.isList)
-            info+="\nlistLength =\t"+str(a.length)
-            info+="\nisFormula  =\t"+str(a._Variable__isFormula)
-            info+="\nexpression =\t"+str(a._Variable__expr)
-            info+="\nvalue      =\t"+str(a.value)
-            info+="\nhasGaussErr=\t"+str(a.hasGaussErr)
-            info+="\nGaussErr   =\t"+str(a.gauss_error)
-            info+="\nhasMaxErr  =\t"+str(a.hasMaxErr)
-            info+="\nMaxErr     =\t"+str(a.max_error)
+            info+="\nname           =\t"+a.name
+            info+="\nID             =\t"+str(a._Variable__id)
+            info+="\nis_list         =\t"+str(a.is_list)
+            info+="\nlistLength     =\t"+str(a.length)
+            info+="\nisFormula      =\t"+str(a._Variable__isFormula)
+            info+="\nexpression     =\t"+str(a._Variable__expr)
+            info+="\nvalue          =\t"+str(a.value)
+            info+="\nhas_gauss_error=\t"+str(a.has_gauss_error)
+            info+="\nGaussErr       =\t"+str(a.gauss_error)
+            info+="\nhas_max_error      =\t"+str(a.has_max_error)
+            info+="\nMaxErr         =\t"+str(a.max_error)
             return info
     def get_options():
         info=""
@@ -109,7 +109,7 @@ class Plot:
     def from_linear_regression(x,y,xlabel=None,ylabel=None,name=None,regression_name=None,marker=None):
         ret = Plot(x,y,xlabel,ylabel,name,marker)
         popt, pcov = [],[]
-        if y.hasGaussErr:
+        if y.has_gauss_error:
             minVal = y.value[np.argmin(y.value)]*10**-3
             sig = [i+minVal for i in y.gauss_error]
             popt, pcov = curve_fit(Plot.lin_func,x.value,y.value,sigma=sig,absolute_sigma=True)
@@ -133,7 +133,7 @@ class Plot:
             ret.name.append(regression_name)
         m = Variable(popt[0],statErr[0],name="m")
         b=0
-        if y.hasMaxErr:
+        if y.has_max_error:
             b = Variable(popt[1],statErr[1],y.max_error[0],name="m")
         else:
             b = Variable(popt[1],statErr[1],name="m")
@@ -198,25 +198,25 @@ class Variable:
         self.symbol = symbols("v"+str(self.__id)+"v")
         self.gSymbol = symbols("g"+str(self.__id)+"g")
         self.mSymbol = symbols("m"+str(self.__id)+"m")
-        self.hasGaussErr=True
-        self.hasMaxErr=True
+        self.has_gauss_error=True
+        self.has_max_error=True
         #value of var init
         if value is None:
-            self.isList = False
+            self.is_list = False
             self.value = [0]
             self.length = 1
         else:
             if type(value) is list:
-                self.isList = True
+                self.is_list = True
                 self.length = len(value)
                 self.value= value
             else:
-                self.isList = False
+                self.is_list = False
                 self.length = 1
                 self.value=[value]
         #gaussian error init
         if gauss_error is None:
-            self.hasGaussErr=False
+            self.has_gauss_error=False
             if self.length is 1:
                 self.gauss_error = [0]
             else:
@@ -229,7 +229,7 @@ class Variable:
 
         #maximum error init
         if max_error is None:
-            self.hasMaxErr=False
+            self.has_max_error=False
             if self.length is 1:
                 self.max_error = [0]
             else:
@@ -401,10 +401,14 @@ class Variable:
         gauss_error = self.get_gauss_error(None,numeric=True)
         max_error = self.get_max_error(None,numeric=True)
         self.value = value
+        self.is_list = True if len(value)!=1 else False
         self.gauss_error = gauss_error
+        self.has_gauss_error = True if gauss_error !=0 else False
+        self.has_max_error = True if max_error !=0 else False
         self.max_error = max_error
         self.__expr = self.symbol
         self.__isFormula=False
+        return self
         
     def returnVariable(self,name=None):
         tName =""
@@ -490,16 +494,16 @@ class Variable:
             else:
                 return str(self.returnVariable("temp"))
         else:
-            if self.length > 1:
+            if self.is_list:
                 retStr = ""
-                if not self.hasMaxErr and not self.hasGaussErr:
-                    for i in range(self.length):
+                if not self.has_max_error and not self.has_gauss_error:
+                    for i in range(len(self.value)):
                         if Options.print_as_latex:
                             retStr += self.name +"_{"+str(i) + "} = " +str(self.value[i])+"\n"
                         else:
                             retStr += self.name +"_"+str(i) + " = " +str(self.value[i])+"\n"
                 else:
-                    for i in range(self.length):
+                    for i in range(len(self.value)):
                         a,b,c,d = _Tools.transformToSig(self.value[i],self.gauss_error[i],self.max_error[i])
                         if Options.print_as_latex:
                             retStr += self.name+"_{"+str(i) + "} = ("+str(self.value[i])+" \pm " + str(self.gauss_error[i]) + " \pm " +str(self.max_error[i])+")\n"
@@ -507,7 +511,7 @@ class Variable:
                             retStr += self.name+"_"+str(i) + " = ("+str(self.value[i])+" \pm " + str(self.gauss_error[i]) + " \pm " +str(self.max_error[i])+")\n"
                 return retStr[:-1]
             else:
-                if not self.hasMaxErr and not self.hasGaussErr:
+                if not self.has_max_error and not self.has_gauss_error:
                     return self.name +" = " +str(self.value[0])
                 a,b,c,d = _Tools.transformToSig(self.value[0],self.gauss_error[0],self.max_error[0])
                 if Options.print_as_latex:
@@ -554,7 +558,7 @@ class _Tools:
                 listLength= i.length
         tExpr = [expr for i in range(listLength)]
         for curVar in var:
-            if curVar.isList:
+            if curVar.is_list:
                 for i2 in range(listLength):
                     tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[i2])
                     tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gauss_error[i2])
