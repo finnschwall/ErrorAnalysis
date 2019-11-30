@@ -506,9 +506,9 @@ class Variable:
                     for i in range(len(self.value)):
                         a,b,c,d = _Tools.transformToSig(self.value[i],self.gauss_error[i],self.max_error[i])
                         if Options.print_as_latex:
-                            retStr += self.name+"_{"+str(i) + "} = ("+str(self.value[i])+" \pm " + str(self.gauss_error[i]) + " \pm " +str(self.max_error[i])+")\n"
+                            retStr += self.name+"_{"+str(i) + "} = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+r")\cdot 10^{"+str(d)+"}\n"
                         else:
-                            retStr += self.name+"_"+str(i) + " = ("+str(self.value[i])+" \pm " + str(self.gauss_error[i]) + " \pm " +str(self.max_error[i])+")\n"
+                            retStr += self.name+"_"+str(i) + " = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+")*10^"+str(d)+"\n"
                 return retStr[:-1]
             else:
                 if not self.has_max_error and not self.has_gauss_error:
