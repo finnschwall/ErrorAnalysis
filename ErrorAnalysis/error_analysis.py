@@ -76,6 +76,7 @@ class Options:
     force_evaluation = True
     no_rounding = False
     fast_mode = False
+    simplify_eqs = True
 
 class Regression:
     def __init__(x,y,expr):
@@ -433,7 +434,7 @@ class Variable:
         var = _Tools.get_vars_in_expr(self.__expr)
         if part_derivs is None:
             part_derivs=var
-        gaussExpr = self.__calcGauss(part_derivs)
+        gaussExpr = simplify(self.__calcGauss(part_derivs))
         if numeric:
             return _Tools.eval(gaussExpr,var)
         else:
@@ -458,7 +459,7 @@ class Variable:
         var = _Tools.get_vars_in_expr(self.__expr)
         if part_derivs is None:
             part_derivs=var
-        maxExpr = self.__calcMax(part_derivs)
+        maxExpr = simplify(self.__calcMax(part_derivs))
         if numeric:
             return _Tools.eval(maxExpr,var)
         else:
@@ -470,13 +471,13 @@ class Variable:
             return m
     
     def __calcMax(self,part_derivs):
-        max_erroror = 0
+        max_error = 0
         for curVar in part_derivs:
             tempExpr=self.__expr.diff(curVar.symbol)
-            tempExpr*=curVar.gSymbol
+            tempExpr*=curVar.mSymbol
             tempExpr=abs(tempExpr)
-            max_erroror+=tempExpr
-        return max_erroror
+            max_error+=tempExpr
+        return max_error
 
     
     def set_name(self,name):
@@ -554,8 +555,8 @@ class _Tools:
     def eval(expr,var):
         listLength=0
         for i in var:
-            if i.length > listLength:
-                listLength= i.length
+            if len(i.value) > listLength:
+                listLength= len(i.value)
         tExpr = [expr for i in range(listLength)]
         for curVar in var:
             if curVar.is_list:
