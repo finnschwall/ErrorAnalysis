@@ -85,17 +85,17 @@ class Regression:
 
 class Plot:
     def show(self):
-        plt.xlabel(self.xlabel)
-        plt.ylabel(self.ylabel)
+        plt.xlabel("$"+self.xlabel+"$")
+        plt.ylabel("$"+self.ylabel+"$")
         for i in range(len(self.x)):
             xVals = self.x[i]
             yVals = self.y[i]
-            if self.plot_type[i] is 0:
+            if self.plot_type[i] == 0:
                 if self.has_legend:
                     plt.plot(xVals,yVals,self.marker[i],label=self.name[i])
                 else:
                     plt.plot(xVals,yVals,self.marker[i])
-            elif self.plot_type[i] is 1:
+            elif self.plot_type[i] == 1:
                 if self.has_legend:
                     plt.errorbar(xVals,yVals,yerr=self.opt1[i],fmt = 'o',label=self.name[i])
                 else:
@@ -218,12 +218,12 @@ class Variable:
         #gaussian error init
         if gauss_error is None:
             self.has_gauss_error=False
-            if self.length is 1:
+            if self.length == 1:
                 self.gauss_error = [0]
             else:
                 self.gauss_error = [0 for i in range(0,self.length)]
         else:
-            if type(gauss_error) is list:
+            if type(gauss_error) == list:
                 self.gauss_error = gauss_error
             else:
                 self.gauss_error = [gauss_error for i in range(0,self.length)]
@@ -231,12 +231,12 @@ class Variable:
         #maximum error init
         if max_error is None:
             self.has_max_error=False
-            if self.length is 1:
+            if self.length == 1:
                 self.max_error = [0]
             else:
                 self.max_error = [0 for i in range(0,self.length)]
         else:
-            if type(max_error) is list:
+            if type(max_error) == list:
                 self.max_error = max_error
             else:
                 self.max_error = [max_error for i in range(0,self.length)]
@@ -424,7 +424,7 @@ class Variable:
         value=_Tools.eval(self.__expr,var)
         gauss_error = self.get_gauss_error(None,numeric=True)
         max_error = self.get_max_error(None,numeric=True)
-        if len(value) is 1:
+        if len(value) == 1:
             nVar = Variable(value[0],gauss_error[0],max_error[0],tName)
         else:
             nVar = Variable(value,gauss_error,max_error,tName)
@@ -490,7 +490,7 @@ class Variable:
 
     def __str__(self):
         if self.__isFormula:
-            if Options.force_numeric_output is False:
+            if Options.force_numeric_output == False:
                 return self.name +" = "+ _Tools.toStr(self.__expr)
             else:
                 return str(self.returnVariable("temp"))
