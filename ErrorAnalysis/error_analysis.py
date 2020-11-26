@@ -6,17 +6,19 @@ import scipy.constants as con
 import weakref
 import math
 import numpy as np
+import scipy.constants as con
 
-
-
+#General TODO
+#fix naming. PEP8 is nicer anyway
+#add scientific constants with symbols
 class Debug:
     def create_vars():
-        a = Variable("1","0.2","0.23",name="a")
-        b = Variable("3","0.11","0.12",name="b")
-        c = Variable("5","0.05","0.34",name="c")
-        d = Variable("7","0.4","0.01",name="d")
-        e = Variable("9","0.1","0.12",name="e")
-        f = Variable("11","0.3","0.23",name="f")
+        a = Variable(1,0.2,0.23,name="a")
+        b = Variable(3,0.11,0.12,name="b")
+        c = Variable(5,0.05,0.34,name="c")
+        d = Variable(7,0.4,0.01,name="d")
+        e = Variable(9,0.1,0.12,name="e")
+        f = Variable(11,0.3,0.23,name="f")
         return a,b,c,d,e,f
     def get_current_id():
         return Variable.dic_id-1
@@ -78,11 +80,13 @@ class Options:
     fast_mode = False
     simplify_eqs = True
 
+
+#TODO everything
 class Regression:
     def __init__(x,y,expr):
         print(expr)
     
-
+#TODO make this actually usable
 class Plot:
     def show(self):
         plt.xlabel("$"+self.xlabel+"$")
@@ -176,8 +180,13 @@ class Plot:
         new_plot.has_legend = self.has_legend
         new_plot.plot_type =self.plot_type+other.plot_type
         return new_plot
-        
+
+#TODO allow formatting options
 #TODO fix memory
+#TODO VERY IMPORTANT. Negative data fails
+#TODO fix speed
+#TODO add units (when I have way too much free time(never?))
+#Revamp math engine. idea: values are always calculated in background. string data is only stored for errors
 class Variable:
     var_dic = dict()
     dic_id = 0
@@ -527,7 +536,7 @@ class Variable:
 class _Tools:
     #TODO prevent case b=c=0
     def transformToSig(a,b,c):
-        aExp = math.floor(math.log10(a))
+        aExp = math.floor(math.log10(abs(a)))
         aT = a*10**-aExp
         bT = b*10**-aExp
         cT = c*10**-aExp
@@ -594,7 +603,8 @@ class _Tools:
             tempStr = tempStr.replace("g"+str(num)+"g",r"\sigma_{"+Options.gauss_error_name+"_{"+Variable.var_dic[i]().name+"}}")
             tempStr = tempStr.replace("m"+str(num)+"m",r"\sigma_{"+Options.max_error_name+"_{"+Variable.var_dic[i]().name+"}}")
         return tempStr
-
+class Constants:
+    k_b = Variable(con.k,0,0,name="k_{B}")
 
 def Tan(a):
     temp = Variable()
@@ -611,6 +621,10 @@ def Cos(a):
 def Exp(a):
     temp = Variable()
     temp._Variable__expr=exp(a._Variable__expr)
+    return temp
+def Log(a):
+    temp = Variable()
+    temp._Variable__expr=log(a._Variable__expr)
     return temp
 def Atan(a):
     temp = Variable()
