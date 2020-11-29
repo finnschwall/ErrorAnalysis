@@ -7,6 +7,8 @@ import weakref
 import math
 import numpy as np
 import scipy.constants as con
+from varname import varname, nameof
+import logging
 
 #General TODO
 #fix naming. PEP8 is nicer anyway
@@ -26,8 +28,6 @@ class Debug:
         return a._Variable__id
     def get_expr(a):
         return Variable.var_dic[a._Variable__id]()._Variable__expr
-    def is_variable(a):
-        return a._Variable__isFormula
     def get_dic_info():
         a=[]
         for i in Variable.var_dic:
@@ -44,505 +44,435 @@ class Debug:
             for i in range(len(a)):
                 text+=Debug.get_info(a[i])
                 text+="\n-----------"
-            return text
+            print(text)
         else:
             info= ""
             info+="\nname           =\t"+a.name
             info+="\nID             =\t"+str(a._Variable__id)
-            info+="\nis_list         =\t"+str(a.is_list)
-            info+="\nlistLength     =\t"+str(a.length)
-            info+="\nisFormula      =\t"+str(a._Variable__isFormula)
+            #info+="\nis_list         =\t"+str(a.is_list)
+            #info+="\nlistLength     =\t"+str(a.length)
+            info+="\ncontained var  =\t"+str(a._Variable__dependencies)
             info+="\nexpression     =\t"+str(a._Variable__expr)
             info+="\nvalue          =\t"+str(a.value)
             info+="\nhas_gauss_error=\t"+str(a.has_gauss_error)
             info+="\nGaussErr       =\t"+str(a.gauss_error)
             info+="\nhas_max_error      =\t"+str(a.has_max_error)
             info+="\nMaxErr         =\t"+str(a.max_error)
-            return info
+            print(info)
     def get_options():
         info=""
         info+="print_as_latex       : "+str(Options.print_as_latex)
-        info+="\nforce_numeric_output : "+str(Options.force_numeric_output)
         info+="\nno_rounding          : "+str(Options.no_rounding)
-        info+="\nforce_evaluation     : "+str(Options.force_evaluation)
         info+="\ngauss_error_name     : "+str(Options.gauss_error_name)
         info+="\nmax_error_name       : "+str(Options.max_error_name)
-        return info
-    
+        print(info)
+#TODO add option for working with single error
+#TODO implement fast mode
+#BUG options don't work as parameters
 class Options:
+    #when false than string will be printed in more readable format
     print_as_latex=True
+    #name of gauss error for printing
     gauss_error_name =  "stat"
+    #name of maximum error for printing
     max_error_name=     "sys"
-    force_numeric_output = False
-    show_latex = False
-    force_evaluation = True
+    #library will normaly look for siginificant places and cut numbers accordingly.
+    #can be deactivated with this option
     no_rounding = False
+    #Ignore expressions and just calculate. Significantly faster but doesn't allow
+    #printing of gauss max or own expression.
+    #WARNING: this will cause immediate garbage collection
+    #also not finished yet. lol
     fast_mode = False
+    #simplify equations before printing them
+    #some simplifcations like sqrt(b*b)=sqrt(b^2)=|b| cannot be prevented
     simplify_eqs = True
 
 
-#TODO everything
+class LinearRegression:
+    #create two vars from lin reg
+    def __init__():
+        pass
 class Regression:
-    def __init__(x,y,expr):
-        print(expr)
-    
-#TODO make this actually usable
+    #create n vars from reg
+    def __init__():
+        pass
+
 class Plot:
-    def show(self):
-        plt.xlabel("$"+self.xlabel+"$")
-        plt.ylabel("$"+self.ylabel+"$")
-        for i in range(len(self.x)):
-            xVals = self.x[i]
-            yVals = self.y[i]
-            if self.plot_type[i] == 0:
-                if self.has_legend:
-                    plt.plot(xVals,yVals,self.marker[i],label=self.name[i])
-                else:
-                    plt.plot(xVals,yVals,self.marker[i])
-            elif self.plot_type[i] == 1:
-                if self.has_legend:
-                    plt.errorbar(xVals,yVals,yerr=self.opt1[i],fmt = 'o',label=self.name[i])
-                else:
-                    plt.errorbar(xVals,yVals,yerr=self.opt1[i],fmt = 'o')
-        if self.has_legend:
-            plt.legend(loc="best")
-        plt.show()
-    def lin_func(x,m,b):
-        return m*x+b
-    #todo Put in own class.
-    #todo create general regression
-    def from_linear_regression(x,y,xlabel=None,ylabel=None,name=None,regression_name=None,marker=None):
-        ret = Plot(x,y,xlabel,ylabel,name,marker)
-        popt, pcov = [],[]
-        if y.has_gauss_error:
-            minVal = y.value[np.argmin(y.value)]*10**-3
-            sig = [i+minVal for i in y.gauss_error]
-            popt, pcov = curve_fit(Plot.lin_func,x.value,y.value,sigma=sig,absolute_sigma=True)
-            ret.plot_type[0]=1
-            ret.opt1[0] = y.gauss_error
-        else:
-            popt, pcov = curve_fit(Plot.lin_func,x.value,y.value)
-        statErr = np.sqrt(np.diag(pcov))
-        minIndex = np.argmin(x.value)
-        maxIndex = np.argmax(x.value)
-        xReg= [x.value[minIndex],x.value[maxIndex]]
-        yReg = [Plot.lin_func(i,*popt) for i in xReg]
-        ret.x.append(xReg)
-        ret.y.append(yReg)
-        ret.marker.append("-")
-        ret.plot_type.append(0)
-        ret.opt1.append(0)
-        if regression_name is None:
-            ret.name.append("Regression "+name)
-        else:
-            ret.name.append(regression_name)
-        m = Variable(popt[0],statErr[0],name="m")
-        b=0
-        if y.has_max_error:
-            b = Variable(popt[1],statErr[1],y.max_error[0],name="m")
-        else:
-            b = Variable(popt[1],statErr[1],name="m")
-        return ret,m,b
+    #create plot from var, linreg or normal reg.
+    #add errorbars etc accordingly
+    def __init__():
+        pass
 
-    def __init__(self,x,y,xlabel=None,ylabel=None,name=None,marker=None):
-        self.has_legend=False
-        self.x = [x.value]
-        self.y = [y.value]
-        self.opt1 = [0]
-        self.plot_type = [0]
-        if marker is None:
-            self.marker = ["x"]
-        else:
-            self.marker = [marker]
-        if xlabel is None:
-            self.xlabel = x.name
-        else:
-            self.xlabel = xlabel
-        if ylabel is None:
-            self.ylabel = y.name
-        else:
-            self.ylabel = ylabel
-        if name is None:
-            self.name = [""]
-        else:
-            self.name = [name]
-            self.has_legend=True
-    
-    def __add__(self,other):
-        new_plot = Plot.__new__(Plot)
-        new_plot.xlabel = self.xlabel
-        new_plot.ylabel = self.ylabel
-        new_plot.x = self.x+other.x
-        new_plot.y = self.y+other.y
-        new_plot.marker = self.marker+other.marker
-        new_plot.name = self.name+other.name
-        new_plot.opt1 = self.opt1+other.opt1
-        new_plot.has_legend = self.has_legend
-        new_plot.plot_type =self.plot_type+other.plot_type
-        return new_plot
 
-#TODO allow formatting options
-#TODO fix memory
-#TODO VERY IMPORTANT. Negative data fails
-#TODO fix speed
-#TODO add units (when I have way too much free time(never?))
-#Revamp math engine. idea: values are always calculated in background. string data is only stored for errors
+#add list for every used variable in expr
+#is this necessary?
 class Variable:
     var_dic = dict()
     dic_id = 0
     
-    #very temporary solution
-    #keepCont = dict()
-    
-    def __init__(self,value=None,gauss_error=None,max_error=None,name=None,expr=None):
-        #internal variables. don't touch
-        self.dependencies = set()
-        self.__isFormula=True
-        self.__id = Variable.dic_id
-        Variable.dic_id+=1
-        #to ensure correct garbage collection
-        Variable.var_dic[self.__id]=weakref.ref(self)
+    def __init__(self,value=None,gauss_error=None,max_error=None,name=None,unit=None):
+        #keep track of all involved variables
+        #it should be tested if this is really faster than iterating over all existing variables
+        self.__dependencies = set()
+        if unit != None:
+            #add unit support for operands.
+            print("thats not finished yet")
 
-        #KEEP
-        #Variable.keepCont[self.__id]=self
-        self.symbol = symbols("v"+str(self.__id)+"v")
-        self.gSymbol = symbols("g"+str(self.__id)+"g")
-        self.mSymbol = symbols("m"+str(self.__id)+"m")
-        self.has_gauss_error=True
-        self.has_max_error=True
-        #value of var init
-        if value is None:
-            self.is_list = False
-            self.value = [0]
-            self.length = 1
+        if name == "INT_OP":
+            self.name="unknown"
+            self.__id = -1
+            self.has_gauss_error=True
+            self.has_max_error=True
         else:
-            if type(value) is list:
-                self.is_list = True
-                self.length = len(value)
-                self.value= value
-            else:
-                self.is_list = False
-                self.length = 1
-                self.value=[value]
-        #gaussian error init
-        if gauss_error is None:
-            self.has_gauss_error=False
-            if self.length == 1:
-                self.gauss_error = [0]
-            else:
-                self.gauss_error = [0 for i in range(0,self.length)]
-        else:
-            if type(gauss_error) == list:
-                self.gauss_error = gauss_error
-            else:
-                self.gauss_error = [gauss_error for i in range(0,self.length)]
+            self.__id = Variable.dic_id
+            self.__dependencies.add(self.__id)
+            
+            Variable.dic_id+=1
+            #to ensure correct garbage collection
+            Variable.var_dic[self.__id]=weakref.ref(self)
 
-        #maximum error init
-        if max_error is None:
-            self.has_max_error=False
-            if self.length == 1:
-                self.max_error = [0]
-            else:
-                self.max_error = [0 for i in range(0,self.length)]
-        else:
-            if type(max_error) == list:
-                self.max_error = max_error
-            else:
-                self.max_error = [max_error for i in range(0,self.length)]
-
-        #expr evaluating
-        if expr is None:
+            self.symbol = symbols("v"+str(self.__id)+"v",real=True)
+            self.g_symbol = symbols("g"+str(self.__id)+"g",real=True)
+            self.m_symbol = symbols("m"+str(self.__id)+"m",real=True)
             self.__expr = self.symbol
-        else:
-            raise NotImplementedError
+            self.__shadow_expr = self.__expr
+            self.__shadow_dependencies = self.__dependencies
+            self.has_gauss_error=True
+            self.has_max_error=True
+            #value of var init
+            if value is None:
+                print("Variable without values was created.\nIt's very likely that this will cause problems")
+                self.is_list = False
+                self.value = 0
+                self.length = 1
+            else:
+                if type(value) is list:
+                    self.is_list = True
+                    self.length = len(value)
+                    self.value= np.array(value)
+                else:
+                    self.is_list = False
+                    self.length = 1
+                    self.value = value
+            #gaussian error init
+            if gauss_error is None:
+                self.has_gauss_error=False
+                if self.length == 1:
+                    self.gauss_error = 0
+                else:
+                    self.gauss_error = [0 for i in range(0,self.length)]
+            else:
+                if type(gauss_error) == list:
+                    self.gauss_error = np.array(gauss_error)
+                else:
+                    if self.length==1:
+                        self.gauss_error = gauss_error
+                    else:
+                        self.gauss_error = np.full(self.length,gauss_error)
 
-        #set name
-        if name is None:
-            self.name="UnnamedVariable"
-            self.hasName=False
-        else:
-            self.hasName=True
-            self.name=name
-        if not(gauss_error is None and max_error is None and value is None):
-            self.__isFormula=False
+            #maximum error init
+            if max_error is None:
+                self.has_max_error=False
+                if self.length == 1:
+                    self.max_error = 0
+                else:
+                    self.max_error = np.zeros(self.length)
+            else:
+                if type(max_error) == list:
+                    self.max_error = max_error
+                else:
+                    if self.length ==1:
+                        self.max_error= max_error
+                    else:
+                        self.max_error = np.full(self.length,max_error)
+
+
+            #set name
+            if name is None:
+                self.name=str(varname())
+                #format accordingly e.g. E_g to E_{g}
+            else:
+                self.name=name
     
     def __del__(self):
-        del self.symbol
-        del self.gSymbol
-        del self.mSymbol
-        del Variable.var_dic[self.__id]
+        if self.__id != -1:
+            del self.symbol
+            del self.m_symbol
+            del self.g_symbol
+            del Variable.var_dic[self.__id]
+
+
+#makes this non temporary variable
+    def set_name(self,name):
+        self.__shadow_expr = self.__expr
+        self.__shadow_dependencies = self.__dependencies
+        self.__id = Variable.dic_id
+        self.__dependencies ={self.__id}
+        Variable.dic_id+=1
+        Variable.var_dic[self.__id]=weakref.ref(self)
+        self.symbol = symbols("v"+str(self.__id)+"v")
+        self.g_symbol = symbols("g"+str(self.__id)+"g")
+        self.m_symbol = symbols("m"+str(self.__id)+"m")
+        self.__expr = self.symbol
+        self.has_gauss_error=True
+        self.has_max_error=True
+        self.name = name
+
+    def __get_expr(self):
+        if self.__id ==-1:
+            return self.__expr, self.__dependencies
+        else:
+            return self.__shadow_expr,self.__shadow_dependencies
+    
+    def __replace_ids(self,string):
+        temp_str = string
+        expr, dependencies = self.__get_expr()
+        for i in dependencies:
+            num = i
+            temp_str = temp_str.replace("v"+str(num)+"v",Variable.var_dic[i]().name)
+            temp_str = temp_str.replace("g"+str(num)+"g",r"\sigma_{"+Options.gauss_error_name+"_{"+Variable.var_dic[i]().name+"}}")
+            temp_str = temp_str.replace("m"+str(num)+"m",r"\sigma_{"+Options.max_error_name+"_{"+Variable.var_dic[i]().name+"}}")
+        return temp_str
+
+    def get_expr(self,print_as_latex=Options.print_as_latex):
+        expr, dependencies = self.__get_expr()
+        if Options.simplify_eqs:
+            expr = simplify(expr)
+        expr = self.__replace_ids(latex(expr)) if print_as_latex else self.__replace_ids(str(expr))
+        return expr
+
+    def get_gauss_error_str(self,error_vars=None,print_as_latex=Options.print_as_latex):
+        iterator = None
+        expr, dependencies = self.__get_expr()
+        if error_vars == None:
+            iterator = [Variable.var_dic[i]() for i in dependencies]
+        else:
+            iterator=error_vars
+        gauss_error=0
+        for i in iterator:
+            if iterator.has_gauss_error == False:
+                continue
+            temp_expr=expr.diff(i.symbol)
+            temp_expr*=i.g_symbol
+            temp_expr=temp_expr**2
+            gauss_error+=temp_expr
+        gauss_error = sqrt(gauss_error)
+        if Options.simplify_eqs:
+            gauss_error = simplify(gauss_error)
+        gauss_error = self.__replace_ids(latex(gauss_error)) if print_as_latex else self.__replace_ids(str(gauss_error))
+        return gauss_error
+    
+
+    def get_max_error_str(self,error_vars=None,print_as_latex=Options.print_as_latex):
+        iterator = None
+        expr, dependencies = self.__get_expr()
+        if error_vars == None:
+            iterator = [Variable.var_dic[i]() for i in dependencies]
+        else:
+            iterator=error_vars
+        max_error=0
+        for i in iterator:
+            temp_expr=expr.diff(i.symbol)
+            temp_expr*=i.m_symbol
+            temp_expr=abs(temp_expr)
+            max_error+=temp_expr
+        if Options.simplify_eqs:
+            max_error = simplify(max_error)
+        max_error = self.__replace_ids(latex(max_error)) if print_as_latex else self.__replace_ids(str(max_error))
+        return max_error
 
 
     def show(self,fontSize=12):
-        temp1 = Options.print_as_latex
-        temp2 = Options.force_numeric_output
-        Options.print_as_latex = True
-        Options.force_numeric_output = False
-        plt.text(0, 1,"$"+str(self)+"$",fontsize=fontSize)
-        Options.print_as_latex = temp1
-        Options.force_numeric_output = temp2
+        text = ""
+        text += "$"+self.to_str(print_expr=True,print_as_latex=True) +"$\n"
+        text += "$"+self.to_str(print_gauss_error=True,print_as_latex=True)+"$\n"
+        text += "$"+self.to_str(print_max_error=True,print_as_latex=True)+"$\n"
+        t_str = self.get_value_str(print_as_latex=True)
+        t_str = t_str.replace("\n","$\n$")
+        text += "$"+t_str+"$"
+        plt.text(0, 0.5,text,fontsize=fontSize)
         plt.axis("off")
         plt.show()
- 
-            
-    def __sub__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= self.__expr-other.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= self.__expr-other
-            temp.__expr=nexpr
-            return temp
-        
-    def __isub__(self,other):
-        self.__isFormula=True
-        if(type(other)==Variable):
-            self.__expr= self.__expr-other.__expr
-        else:
-            self.__expr=self.__expr-other
-        return self
-    
-    def __add__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= self.__expr+other.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= self.__expr+other
-            temp.__expr=nexpr
-            return temp
-           
-    def __iadd__(self, other):
-        self.__isFormula=True
-        if(type(other)==Variable):
-            self.__expr= self.__expr+other.__expr
-        else:
-            self.__expr=self.__expr+other
-        return self
-    
-    def __mul__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= self.__expr*other.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= self.__expr*other
-            temp.__expr=nexpr
-            return temp
-           
-    def __imul__(self, other):
-        self.__isFormula=True
-        if(type(other)==Variable):
-            self.__expr= self.__expr*other.__expr
-        else:
-            self.__expr=self.__expr*other
-        return self
 
-    def __truediv__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= self.__expr/other.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= self.__expr/other
-            temp.__expr=nexpr
-            return temp
-               
-    def __itruediv__(self, other):
-        self.__isFormula=True
-        if(type(other)==Variable):
-            self.__expr= self.__expr/other.__expr
-        else:
-            self.__expr=self.__expr/other
-        return self
-
-    def __pow__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= self.__expr**other.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= self.__expr**other
-            temp.__expr=nexpr
-            return temp
-    def __ipow__(self, other):
-        self.__isFormula=True
-        if(type(other)==Variable):
-            self.__expr= self.__expr**other.__expr
-        else:
-            self.__expr=self.__expr**other
-        return self
-
-    def __rtruediv__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= other.__expr/self.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= other/self.__expr
-            temp.__expr=nexpr
-            return temp
-
-    def __rsub__(self,other):
-        temp = Variable()
-        if(type(other)==Variable):
-            nexpr= other.__expr-self.__expr
-            temp.__expr=nexpr
-            return temp
-        else:
-            nexpr= other-self.__expr
-            temp.__expr=nexpr
-            return temp
-    def __getitem__(self, key):
-        return [self.value[key],self.gauss_error[key],self.max_error[key]]
-    
-    def to_variable(self,name=None):
-        if  name is not None:
-            self.name = name
-        var = _Tools.get_vars_in_expr(self.__expr)
-        value=_Tools.eval(self.__expr,var)
-        gauss_error = self.get_gauss_error(None,numeric=True)
-        max_error = self.get_max_error(None,numeric=True)
-        self.value = value
-        self.is_list = True if len(value)!=1 else False
-        self.gauss_error = gauss_error
-        self.has_gauss_error = True if gauss_error !=0 else False
-        self.has_max_error = True if max_error !=0 else False
-        self.max_error = max_error
-        self.__expr = self.symbol
-        self.__isFormula=False
-        return self
-        
-    def returnVariable(self,name=None):
-        tName =""
-        if name is None:
-            if self.hasName is True:
-                tName = self.name
-            else:
-                tName = "temp"
-        else:
-            tName=name
-        var = _Tools.get_vars_in_expr(self.__expr)
-        value=_Tools.eval(self.__expr,var)
-        gauss_error = self.get_gauss_error(None,numeric=True)
-        max_error = self.get_max_error(None,numeric=True)
-        if len(value) == 1:
-            nVar = Variable(value[0],gauss_error[0],max_error[0],tName)
-        else:
-            nVar = Variable(value,gauss_error,max_error,tName)
-        return nVar
-    
-    def get_gauss_error(self,part_derivs=None,numeric=False):
-        var = _Tools.get_vars_in_expr(self.__expr)
-        if part_derivs is None:
-            part_derivs=var
-        gaussExpr = simplify(self.__calcGauss(part_derivs))
-        if numeric:
-            return _Tools.eval(gaussExpr,var)
-        else:
-            name = r"\sigma_{"+Options.gauss_error_name+"_{" +self.name +"}}"
-            g = Variable(name=name)
-            g.__isFormula=True
-            g.__expr = gaussExpr
-            g.hasError=False
-            return g
-
-    def __calcGauss(self,part_derivs):
-        gauss_error = 0
-        for curVar in part_derivs:
-            tempExpr=self.__expr.diff(curVar.symbol)
-            tempExpr*=curVar.gSymbol
-            tempExpr=tempExpr**2
-            gauss_error+=tempExpr
-        gauss_error = gauss_error**0.5
-        return gauss_error
-
-    def get_max_error(self,part_derivs=None,numeric=False):
-        var = _Tools.get_vars_in_expr(self.__expr)
-        if part_derivs is None:
-            part_derivs=var
-        maxExpr = simplify(self.__calcMax(part_derivs))
-        if numeric:
-            return _Tools.eval(maxExpr,var)
-        else:
-            name = r"\sigma_{"+Options.max_error_name+"_{" +self.name +"}}"
-            m = Variable(name=name)
-            m.__isFormula=True
-            m.__expr = maxExpr
-            m.hasError=False
-            return m
-    
-    def __calcMax(self,part_derivs):
-        max_error = 0
-        for curVar in part_derivs:
-            tempExpr=self.__expr.diff(curVar.symbol)
-            tempExpr*=curVar.mSymbol
-            tempExpr=abs(tempExpr)
-            max_error+=tempExpr
-        return max_error
-
-    
-    def set_name(self,name):
-        self.hasName=True
-        self.name = name
-
-    def eval(self):
-        var = _Tools.get_vars_in_expr(self.__expr)
-        return _Tools.eval(self.__expr,var)
-
-    def __str__(self):
-        if self.__isFormula:
-            if Options.force_numeric_output == False:
-                return self.name +" = "+ _Tools.toStr(self.__expr)
-            else:
-                return str(self.returnVariable("temp"))
-        else:
-            if self.is_list:
-                retStr = ""
-                if not self.has_max_error and not self.has_gauss_error:
-                    for i in range(len(self.value)):
-                        if Options.print_as_latex:
-                            retStr += self.name +"_{"+str(i) + "} = " +str(self.value[i])+"\n"
-                        else:
-                            retStr += self.name +"_"+str(i) + " = " +str(self.value[i])+"\n"
+    def get_value_str(self,print_as_latex=Options.print_as_latex,no_rounding=Options.no_rounding):
+        if self.length ==1:
+            if no_rounding:
+                a,b,c = self.value,self.gauss_error,self.max_error
+                if print_as_latex:
+                    return self.name+" = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+r")"
                 else:
-                    for i in range(len(self.value)):
-                        a,b,c,d = _Tools.transformToSig(self.value[i],self.gauss_error[i],self.max_error[i])
-                        if Options.print_as_latex:
-                            retStr += self.name+"_{"+str(i) + "} = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+r")\cdot 10^{"+str(d)+"}\n"
-                        else:
-                            retStr += self.name+"_"+str(i) + " = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+")*10^"+str(d)+"\n"
-                return retStr[:-1]
+                    return self.name+" = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+")"
             else:
-                if not self.has_max_error and not self.has_gauss_error:
-                    return self.name +" = " +str(self.value[0])
-                a,b,c,d = _Tools.transformToSig(self.value[0],self.gauss_error[0],self.max_error[0])
-                if Options.print_as_latex:
+                a,b,c,d = _Tools.transform_to_sig(self.value,self.gauss_error,self.max_error)
+                if print_as_latex:
                     return self.name+" = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+r")\cdot 10^{"+str(d)+"}"
                 else:
                     return self.name+" = ("+str(a)+" \pm " + str(b) + " \pm " +str(c)+")\cdot 10^{"+str(d)+"}"
-                           
-    __rmul__ = __mul__
-    __radd__ = __add__
+        else:
+            string = ""
+            for i in range(self.length):
+                string+=self[i].get_value_str(print_as_latex,no_rounding)+"\n"
+            return string[:-1]
+            
 
-#internal heavily used methods
+    def to_str(self,print_values=False,print_expr=False,print_gauss_error=False,print_max_error=False,print_all=False,print_as_latex=Options.print_as_latex):
+        ret_str = ""
+        if print_values == False and print_expr==False and print_gauss_error==False and print_max_error==False and print_all==False:
+            ret_str = self.name
+        if print_all:
+            print_values=True
+            print_expr=True
+            print_gauss_error=True
+            print_max_error=True
+        if print_values:
+            ret_str += self.get_value_str(print_as_latex)
+            if print_gauss_error or print_max_error or print_expr:
+                ret_str += "\n"
+        if print_expr:
+            ret_str+= self.name+"="+self.get_expr(print_as_latex)
+            if print_gauss_error or print_max_error:
+                ret_str += "\n"
+        if print_gauss_error:
+            ret_str+= r"\sigma_{"+Options.gauss_error_name+"_{"+self.name+"}}"+"="+self.get_gauss_error_str(print_as_latex=print_as_latex)
+            if print_max_error:
+                ret_str += "\n"
+        if print_max_error:
+            ret_str+= r"\sigma_{"+Options.max_error_name+"_{"+self.name+"}}"+"="+self.get_max_error_str(print_as_latex=print_as_latex)
+        return ret_str
+
+    
+    def __str__(self):
+        return self.to_str(True,print_as_latex=False)
+        
+    def __getitem__(self, key):
+        if self.length>1:
+            return Variable(self.value[key],self.gauss_error[key],self.max_error[key],self.name+"_{"+str(key)+"}")
+        else:
+            if key ==0:
+                return self.value
+            elif key==1:
+                return self.gauss_error
+            elif key ==2:
+                return self.max_error
+            else:
+                raise IndexError("list index out of range")
+
+    #operators
+
+    #+ and -
+    #+
+    def __add__(self,other):
+        RET_VAR = Variable(name="INT_OP")
+        if(type(other)==Variable):
+            RET_VAR.value = self.value+other.value
+            RET_VAR.gauss_error = np.sqrt(self.gauss_error**2+other.gauss_error**2)
+            RET_VAR.max_error = np.abs(self.max_error)+np.abs(other.max_error)
+            RET_VAR.__expr=self.__expr+other.__expr
+            RET_VAR.__dependencies = other.__dependencies | self.__dependencies
+        else:
+            RET_VAR.value = self.value+other
+            RET_VAR.gauss_error =self.gauss_error
+            RET_VAR.max_error = np.abs(self.max_error)
+            RET_VAR.__expr=self.__expr+other
+            RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+    def __radd__(self,other):
+        return self+other
+    #-
+    def __sub__(self,other):
+        RET_VAR = Variable(name="INT_OP")
+        if(type(other)==Variable):
+            RET_VAR.value = self.value-other.value
+            RET_VAR.gauss_error = np.sqrt(self.gauss_error**2+other.gauss_error**2)
+            RET_VAR.max_error = np.abs(self.max_error)+np.abs(other.max_error)
+            RET_VAR.__expr=self.__expr-other.__expr
+            RET_VAR.__dependencies = other.__dependencies | self.__dependencies
+        else:
+            RET_VAR.value = self.value-other
+            RET_VAR.gauss_error = self.gauss_error
+            RET_VAR.max_error = self.max_error
+            RET_VAR.__expr=self.__expr-other
+            RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+    def __rsub__(self,other):
+        return -self+other
+    def __neg__(self):
+        RET_VAR = Variable(name="INT_OP")
+        RET_VAR.value = -self.value
+        RET_VAR.gauss_error =  self.gauss_error
+        RET_VAR.max_error = self.max_error
+        RET_VAR.__expr= -self.__expr
+        RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+
+    # * and /
+    #*
+    def __mul__(self,other):
+        RET_VAR = Variable(name="INT_OP")
+        if(type(other)==Variable):
+            RET_VAR.value = self.value*other.value
+            RET_VAR.gauss_error =  np.sqrt((other.gauss_error*self.value)**2+(other.value*self.gauss_error)**2) 
+            RET_VAR.max_error = np.abs(other.max_error*self.value)+np.abs(self.max_error*other.value)
+            RET_VAR.__expr=self.__expr*other.__expr
+            RET_VAR.__dependencies = other.__dependencies | self.__dependencies
+        else:
+            RET_VAR.value = self.value*other
+            RET_VAR.gauss_error = self.gauss_error*other
+            RET_VAR.max_error = self.max_error*other
+            RET_VAR.__expr=self.__expr*other
+            RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+    def __rmul__(self,other):
+        return self*other
+    #/
+    
+    def __truediv__(self,other):
+        RET_VAR = Variable(name="INT_OP")
+        if(type(other)==Variable):
+            RET_VAR.value = self.value/other.value
+            RET_VAR.gauss_error =  np.sqrt((other.gauss_error*self.value)**2+(other.value*self.gauss_error)**2)/(other.value**2) 
+            RET_VAR.max_error = np.abs(other.max_error*self.value/other.value**2)+np.abs(self.max_error/other.value)
+            RET_VAR.__expr=self.__expr/other.__expr
+            RET_VAR.__dependencies = other.__dependencies | self.__dependencies
+        else:
+            RET_VAR.value = self.value/other
+            RET_VAR.gauss_error = self.gauss_error/other
+            RET_VAR.max_error = np.abs(self.max_error/other)
+            RET_VAR.__expr=self.__expr/other
+            RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+    
+    def __rtruediv__(self,other):
+        #other/self
+        RET_VAR = Variable(name="INT_OP")
+        RET_VAR.value = other/self.value
+        RET_VAR.gauss_error = other*np.abs(self.gauss_error)/self.value**2
+        RET_VAR.max_error = other*np.abs(self.max_error/self.value**2)
+        RET_VAR.__expr=other/self.__expr
+        RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+
+
+
 class _Tools:
     #TODO prevent case b=c=0
-    def transformToSig(a,b,c):
+    def transform_to_sig(a,b,c):
+        a= float(a)
+        b=float(b)
+        c=float(c)
         aExp = math.floor(math.log10(abs(a)))
         aT = a*10**-aExp
         bT = b*10**-aExp
         cT = c*10**-aExp
         if Options.no_rounding:
             return aT,bT,cT,aExp
-        
         if b != 0:
             bExp =math.floor(math.log10(bT))
         else:
@@ -560,89 +490,3 @@ class _Tools:
             return round(aT,abs(cExp)+1),round(bT,abs(cExp)+1),round(cT,abs(cExp)+1),aExp
 
 
-    
-    def eval(expr,var):
-        listLength=0
-        for i in var:
-            if len(i.value) > listLength:
-                listLength= len(i.value)
-        tExpr = [expr for i in range(listLength)]
-        for curVar in var:
-            if curVar.is_list:
-                for i2 in range(listLength):
-                    tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[i2])
-                    tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gauss_error[i2])
-                    tExpr[i2] = tExpr[i2].replace(curVar.mSymbol,curVar.max_error[i2])
-            else:
-                for i2 in range(listLength):
-                    tExpr[i2] = tExpr[i2].replace(curVar.symbol,curVar.value[0])
-                    tExpr[i2] = tExpr[i2].replace(curVar.gSymbol,curVar.gauss_error[0])
-                    tExpr[i2] = tExpr[i2].replace(curVar.mSymbol,curVar.max_error[0])
-        if Options.force_evaluation:
-            tExpr = [N(i) for i in tExpr]
-        return tExpr
-
-    def get_vars_in_expr(expr):
-        var = []
-        for i in expr.free_symbols:
-            s = str(i)
-            if 'v' in s:
-                iId = int(str(i).replace("v",""))
-                length = Variable.var_dic[iId]().length
-                var.append(Variable.var_dic[iId]())
-        return var
-    def toStr(expr):
-        tempStr=""
-        if Options.print_as_latex:
-            tempStr = latex(expr)
-        else:
-            tempStr= str(expr)
-        for i in Variable.var_dic:
-            num = i
-            tempStr = tempStr.replace("v"+str(num)+"v",Variable.var_dic[i]().name)
-            tempStr = tempStr.replace("g"+str(num)+"g",r"\sigma_{"+Options.gauss_error_name+"_{"+Variable.var_dic[i]().name+"}}")
-            tempStr = tempStr.replace("m"+str(num)+"m",r"\sigma_{"+Options.max_error_name+"_{"+Variable.var_dic[i]().name+"}}")
-        return tempStr
-class Constants:
-    k_b = Variable(con.k,0,0,name="k_{B}")
-
-def Tan(a):
-    temp = Variable()
-    temp._Variable__expr=tan(a._Variable__expr)
-    return temp
-def Sin(a):
-    temp = Variable()
-    temp._Variable__expr=sin(a._Variable__expr)
-    return temp
-def Cos(a):
-    temp = Variable()
-    temp._Variable__expr=cos(a._Variable__expr)
-    return temp
-def Exp(a):
-    temp = Variable()
-    temp._Variable__expr=exp(a._Variable__expr)
-    return temp
-def Log(a):
-    temp = Variable()
-    temp._Variable__expr=log(a._Variable__expr)
-    return temp
-def Atan(a):
-    temp = Variable()
-    temp._Variable__expr=atan(a._Variable__expr)
-    return temp
-def Acos(a):
-    temp = Variable()
-    temp._Variable__expr=acos(a._Variable__expr)
-    return temp
-def Asin(a):
-    temp = Variable()
-    temp._Variable__expr=asin(a._Variable__expr)
-    return temp
-def Sinh(a):
-    temp = Variable()
-    temp._Variable__expr=sinh(a._Variable__expr)
-    return temp
-def Cosh(a):
-    temp = Variable()
-    temp._Variable__expr=cosh(a._Variable__expr)
-    return temp
