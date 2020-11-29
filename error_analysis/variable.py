@@ -6,16 +6,29 @@ import numpy as np
 from varname import varname
 from error_analysis import options
 
-
 # TODO keep track wether vars have errors
+
+
 class Variable:
+    """
+    Data type which supports error propagation
+    """
     var_dic = dict()
     dic_id = 0
 
     def __init__(self, value=None, gauss_error=None, max_error=None, name=None, unit=None):
+        """
+        Creates new instance of a variable
+        :param value: The value/s of the variable. Can be list or single value
+        :param gauss_error: error which is propagated by gaussian rule
+        :param max_error: error which is propagated by maximum error estimation
+        :param name: Display name in everything string related.
+        Can be latex style
+        :param unit: not implemented yet
+        """
         # keep track of all involved variables
         # it should be tested if this is really faster than iterating over all existing variables
-        self.__dependencies = set()
+
         if unit != None:
             # add unit support for operands.
             print("thats not finished yet")
@@ -26,6 +39,7 @@ class Variable:
             self.has_gauss_error = True
             self.has_max_error = True
         else:
+            self.__dependencies = set()
             self.__id = Variable.dic_id
             self.__dependencies.add(self.__id)
 
@@ -43,7 +57,6 @@ class Variable:
             self.has_max_error = True
             # value of var init
             if value is None:
-                print("Variable without values was created.\nIt's very likely that this will cause problems")
                 self.is_list = False
                 self.value = 0
                 self.length = 1
@@ -62,7 +75,7 @@ class Variable:
                 if self.length == 1:
                     self.gauss_error = 0
                 else:
-                    self.gauss_error = [0 for i in range(0, self.length)]
+                    self.gauss_error = np.zeros(self.length)
             else:
                 if type(gauss_error) == list:
                     self.gauss_error = np.array(gauss_error)
@@ -90,7 +103,7 @@ class Variable:
 
             # set name
             if name is None:
-                self.name = str(varname())
+                self.name = str(varname(raise_exc=False))
                 # format accordingly e.g. E_g to E_{g}
             else:
                 self.name = name
@@ -266,6 +279,27 @@ class Variable:
                 raise IndexError("list index out of range")
 
     # operators
+    def __finish_operation(self):
+        if type(self.value) is np.ndarray:
+            self.length = len(self.value)
+            if np.count_nonzero(self.gauss_error) > 0:
+                self.has_gauss_error = True
+            else:
+                self.has_gauss_error = False
+            if np.count_nonzero(self.max_error) > 0:
+                self.has_max_error = True
+            else:
+                self.has_max_error = False
+        else:
+            self.length = 1
+            if self.gauss_error == 0:
+                self.has_gauss_error = False
+            else:
+                self.has_gauss_error = True
+            if self.max_error == 0:
+                self.has_max_error = False
+            else:
+                self.has_max_error = True
 
     # + and -
     # +
@@ -283,7 +317,7 @@ class Variable:
             RET_VAR.max_error = np.abs(self.max_error)
             RET_VAR.__expr = self.__expr + other
             RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     def __radd__(self, other):
@@ -304,7 +338,7 @@ class Variable:
             RET_VAR.max_error = self.max_error
             RET_VAR.__expr = self.__expr - other
             RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     # TODO make this less lazy and more efficient
@@ -318,7 +352,7 @@ class Variable:
         RET_VAR.max_error = self.max_error
         RET_VAR.__expr = -self.__expr
         RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     # * and /
@@ -337,7 +371,7 @@ class Variable:
             RET_VAR.max_error = self.max_error * other
             RET_VAR.__expr = self.__expr * other
             RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     def __rmul__(self, other):
@@ -361,7 +395,7 @@ class Variable:
             RET_VAR.max_error = np.abs(self.max_error / other)
             RET_VAR.__expr = self.__expr / other
             RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     def __rtruediv__(self, other):
@@ -371,7 +405,7 @@ class Variable:
         RET_VAR.max_error = other * np.abs(self.max_error / self.value ** 2)
         RET_VAR.__expr = other / self.__expr
         RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     # ^
@@ -391,20 +425,22 @@ class Variable:
             RET_VAR.max_error = np.abs(self.max_error * other * self.value ** (other - 1))
             RET_VAR.__expr = self.__expr ** other
             RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
 
     def __rpow__(self, other):
         # other**self
         RET_VAR = Variable(name="INT_OP")
-        RET_VAR.value = other**self.value
-        RET_VAR.gauss_error = np.abs(self.gauss_error)*np.log(other)*other**self.value
-        RET_VAR.max_error = np.abs(self.max_error)*np.log(other)*other**self.value
-        RET_VAR.__expr =  other**self.__expr
+        RET_VAR.value = other ** self.value
+        RET_VAR.gauss_error = np.abs(self.gauss_error) * np.log(other) * other ** self.value
+        RET_VAR.max_error = np.abs(self.max_error) * np.log(other) * other ** self.value
+        RET_VAR.__expr = other ** self.__expr
         RET_VAR.__dependencies = self.__dependencies
-        RET_VAR.length = len(RET_VAR.value)
+        RET_VAR.__finish_operation()
         return RET_VAR
-#TODO implement iadd isub imul itruediv
+
+
+# TODO implement iadd isub imul itruediv
 
 class _Tools:
     # TODO prevent case b=c=0

@@ -12,8 +12,8 @@ setup(
         'varname'
     ],
     url='https://github.com/finnschwall/ErrorAnalysis',
-    license='',
+    license='Apache License 2.0 ',
     author='finns',
-    author_email='unjqc@student.kit.edu',
+    author_email='finn1@web.de',
     description='Small library for easier propagation of uncertainty'
 )

@@ -5,10 +5,11 @@ a = Variable([1.0123, 2.1823, 3.19292, 4.9494], [1.930923, 0.13322, 0.7474, 0.37
 b = Variable(50, 0.11, 0.12, "b")
 c = Variable([5, 7, 9, 10], max_error=0.05, name="c")
 d = Variable(200, 0.41, 1.12, "d")
-e = Variable(9, 0, 0.12)
+e = Variable(9)
 
 f = Variable(100, name="f")
 
-x = 5**a
+x = e*c
 debug.get_info(x)
-x.show(20)
+#x.show(20)
+
