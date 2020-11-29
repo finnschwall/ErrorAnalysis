@@ -1,7 +1,5 @@
 from error_analysis import *
-
-Options.no_rounding = False
-
+from error_analysis import debug
 a = Variable([1.0123, 2.1823, 3.19292, 4.9494], [1.930923, 0.13322, 0.7474, 0.37827], 0.28, "a")
 
 b = Variable(50, 0.11, 0.12, "b")
@@ -11,6 +9,6 @@ e = Variable(9, 0, 0.12)
 
 f = Variable(100, name="f")
 
-a.value = a.value * 0.1
-x = a ** b
+x = 5**a
+debug.get_info(x)
 x.show(20)
