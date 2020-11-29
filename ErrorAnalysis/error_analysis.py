@@ -13,59 +13,7 @@ import logging
 #General TODO
 #fix naming. PEP8 is nicer anyway
 #add scientific constants with symbols
-class Debug:
-    def create_vars():
-        a = Variable(1,0.2,0.23,name="a")
-        b = Variable(3,0.11,0.12,name="b")
-        c = Variable(5,0.05,0.34,name="c")
-        d = Variable(7,0.4,0.01,name="d")
-        e = Variable(9,0.1,0.12,name="e")
-        f = Variable(11,0.3,0.23,name="f")
-        return a,b,c,d,e,f
-    def get_current_id():
-        return Variable.dic_id-1
-    def get_id(a):
-        return a._Variable__id
-    def get_expr(a):
-        return Variable.var_dic[a._Variable__id]()._Variable__expr
-    def get_dic_info():
-        a=[]
-        for i in Variable.var_dic:
-            a.append(Variable.var_dic[i]())
-        return Debug.get_info(a)
-    def var_to_string_list(a):
-        text = "-----------"
-        for i in range(len(a)):
-            text+=Debug.getAllInfo(a[i])
-            text+="\n-----------"
-    def get_info(a):
-        if type(a) is list:
-            text = "-----------"
-            for i in range(len(a)):
-                text+=Debug.get_info(a[i])
-                text+="\n-----------"
-            print(text)
-        else:
-            info= ""
-            info+="\nname           =\t"+a.name
-            info+="\nID             =\t"+str(a._Variable__id)
-            #info+="\nis_list         =\t"+str(a.is_list)
-            #info+="\nlistLength     =\t"+str(a.length)
-            info+="\ncontained var  =\t"+str(a._Variable__dependencies)
-            info+="\nexpression     =\t"+str(a._Variable__expr)
-            info+="\nvalue          =\t"+str(a.value)
-            info+="\nhas_gauss_error=\t"+str(a.has_gauss_error)
-            info+="\nGaussErr       =\t"+str(a.gauss_error)
-            info+="\nhas_max_error      =\t"+str(a.has_max_error)
-            info+="\nMaxErr         =\t"+str(a.max_error)
-            print(info)
-    def get_options():
-        info=""
-        info+="print_as_latex       : "+str(Options.print_as_latex)
-        info+="\nno_rounding          : "+str(Options.no_rounding)
-        info+="\ngauss_error_name     : "+str(Options.gauss_error_name)
-        info+="\nmax_error_name       : "+str(Options.max_error_name)
-        print(info)
+
 #TODO add option for working with single error
 #TODO implement fast mode
 #BUG options don't work as parameters
@@ -89,24 +37,8 @@ class Options:
     simplify_eqs = True
 
 
-class LinearRegression:
-    #create two vars from lin reg
-    def __init__():
-        pass
-class Regression:
-    #create n vars from reg
-    def __init__():
-        pass
 
-class Plot:
-    #create plot from var, linreg or normal reg.
-    #add errorbars etc accordingly
-    def __init__():
-        pass
-
-
-#add list for every used variable in expr
-#is this necessary?
+#TODO keep track wether vars have errors
 class Variable:
     var_dic = dict()
     dic_id = 0
@@ -251,7 +183,7 @@ class Variable:
             iterator=error_vars
         gauss_error=0
         for i in iterator:
-            if iterator.has_gauss_error == False:
+            if i.has_gauss_error == False:
                 continue
             temp_expr=expr.diff(i.symbol)
             temp_expr*=i.g_symbol
@@ -273,6 +205,8 @@ class Variable:
             iterator=error_vars
         max_error=0
         for i in iterator:
+            if i.has_max_error ==False:
+                continue
             temp_expr=expr.diff(i.symbol)
             temp_expr*=i.m_symbol
             temp_expr=abs(temp_expr)
@@ -291,10 +225,12 @@ class Variable:
         t_str = self.get_value_str(print_as_latex=True)
         t_str = t_str.replace("\n","$\n$")
         text += "$"+t_str+"$"
-        plt.text(0, 0.5,text,fontsize=fontSize)
+        plt.text(0, 0.1,text,fontsize=fontSize)
         plt.axis("off")
         plt.show()
 
+
+    #TODO less lazy version that runs faster
     def get_value_str(self,print_as_latex=Options.print_as_latex,no_rounding=Options.no_rounding):
         if self.length ==1:
             if no_rounding:
@@ -397,6 +333,7 @@ class Variable:
             RET_VAR.__dependencies = self.__dependencies
         RET_VAR.length = len(RET_VAR.value)
         return RET_VAR
+    #TODO make this less lazy and more efficient
     def __rsub__(self,other):
         return -self+other
     def __neg__(self):
@@ -449,7 +386,6 @@ class Variable:
         return RET_VAR
     
     def __rtruediv__(self,other):
-        #other/self
         RET_VAR = Variable(name="INT_OP")
         RET_VAR.value = other/self.value
         RET_VAR.gauss_error = other*np.abs(self.gauss_error)/self.value**2
@@ -459,6 +395,40 @@ class Variable:
         RET_VAR.length = len(RET_VAR.value)
         return RET_VAR
 
+    #^ 
+    def __pow__(self,other):
+        RET_VAR = Variable(name="INT_OP")
+        if(type(other)==Variable):
+            RET_VAR.value = self.value**other.value
+            RET_VAR.gauss_error =  self.gauss_error
+            RET_VAR.max_error = self.max_error
+            RET_VAR.__expr=self.__expr**other.__expr
+            RET_VAR.__dependencies = other.__dependencies | self.__dependencies
+        else:
+            RET_VAR.value = self.value**other
+            RET_VAR.gauss_error = np.sqrt(self.value**(2*other-2))*np.abs(self.gauss_error*other)
+            RET_VAR.max_error = np.abs(self.max_error*other*self.value**(other-1))
+            RET_VAR.__expr=self.__expr**other
+            RET_VAR.__dependencies = self.__dependencies
+        RET_VAR.length = len(RET_VAR.value)
+        return RET_VAR
+
+
+
+class LinearRegression:
+    #create two vars from lin reg
+    def __init__():
+        pass
+class Regression:
+    #create n vars from reg
+    def __init__():
+        pass
+
+class Plot:
+    #create plot from var, linreg or normal reg.
+    #add errorbars etc accordingly
+    def __init__():
+        pass
 
 
 class _Tools:
@@ -490,3 +460,57 @@ class _Tools:
             return round(aT,abs(cExp)+1),round(bT,abs(cExp)+1),round(cT,abs(cExp)+1),aExp
 
 
+
+class Debug:
+    def create_vars():
+        a = Variable(1,0.2,0.23,name="a")
+        b = Variable(3,0.11,0.12,name="b")
+        c = Variable(5,0.05,0.34,name="c")
+        d = Variable(7,0.4,0.01,name="d")
+        e = Variable(9,0.1,0.12,name="e")
+        f = Variable(11,0.3,0.23,name="f")
+        return a,b,c,d,e,f
+    def get_current_id():
+        return Variable.dic_id-1
+    def get_id(a):
+        return a._Variable__id
+    def get_expr(a):
+        return Variable.var_dic[a._Variable__id]()._Variable__expr
+    def get_dic_info():
+        a=[]
+        for i in Variable.var_dic:
+            a.append(Variable.var_dic[i]())
+        return Debug.get_info(a)
+    def var_to_string_list(a):
+        text = "-----------"
+        for i in range(len(a)):
+            text+=Debug.getAllInfo(a[i])
+            text+="\n-----------"
+    def get_info(a):
+        if type(a) is list:
+            text = "-----------"
+            for i in range(len(a)):
+                text+=Debug.get_info(a[i])
+                text+="\n-----------"
+            print(text)
+        else:
+            info= ""
+            info+="\nname           =\t"+a.name
+            info+="\nID             =\t"+str(a._Variable__id)
+            #info+="\nis_list         =\t"+str(a.is_list)
+            #info+="\nlistLength     =\t"+str(a.length)
+            info+="\ncontained var  =\t"+str(a._Variable__dependencies)
+            info+="\nexpression     =\t"+str(a._Variable__expr)
+            info+="\nvalue          =\t"+str(a.value)
+            info+="\nhas_gauss_error=\t"+str(a.has_gauss_error)
+            info+="\nGaussErr       =\t"+str(a.gauss_error)
+            info+="\nhas_max_error      =\t"+str(a.has_max_error)
+            info+="\nMaxErr         =\t"+str(a.max_error)
+            print(info)
+    def get_options():
+        info=""
+        info+="print_as_latex       : "+str(Options.print_as_latex)
+        info+="\nno_rounding          : "+str(Options.no_rounding)
+        info+="\ngauss_error_name     : "+str(Options.gauss_error_name)
+        info+="\nmax_error_name       : "+str(Options.max_error_name)
+        print(info)
