@@ -1,1 +1,1 @@
-from error_analysis.variable import Variable
+from error_analysis.evar import *

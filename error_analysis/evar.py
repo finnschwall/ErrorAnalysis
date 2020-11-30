@@ -1,4 +1,4 @@
-from sympy import *
+import sympy
 import matplotlib.pyplot as plt
 import weakref
 import math
@@ -6,10 +6,11 @@ import numpy as np
 from varname import varname
 from error_analysis import options
 
+
 # TODO keep track wether vars have errors
 
 
-class Variable:
+class evar:
     """
     Data type which supports error propagation
     """
@@ -18,18 +19,18 @@ class Variable:
 
     def __init__(self, value=None, gauss_error=None, max_error=None, name=None, unit=None):
         """
-        Creates new instance of a variable
+        Creates new instance of a variable. All non-set variables are assumed to be 0.
+
         :param value: The value/s of the variable. Can be list or single value
-        :param gauss_error: error which is propagated by gaussian rule
-        :param max_error: error which is propagated by maximum error estimation
-        :param name: Display name in everything string related.
-        Can be latex style
+        :param gauss_error: error which is propagated by gaussian estimation. If value is list but this is not,
+        :param max_error: error which is propagated by maximum error estimation.
+        :param name: Display name in everything string related. Can be latex style
         :param unit: not implemented yet
         """
         # keep track of all involved variables
         # it should be tested if this is really faster than iterating over all existing variables
 
-        if unit != None:
+        if unit is not None:
             # add unit support for operands.
             print("thats not finished yet")
 
@@ -40,16 +41,16 @@ class Variable:
             self.has_max_error = True
         else:
             self.__dependencies = set()
-            self.__id = Variable.dic_id
+            self.__id = evar.dic_id
             self.__dependencies.add(self.__id)
 
-            Variable.dic_id += 1
+            evar.dic_id += 1
             # to ensure correct garbage collection
-            Variable.var_dic[self.__id] = weakref.ref(self)
+            evar.var_dic[self.__id] = weakref.ref(self)
 
-            self.symbol = symbols("v" + str(self.__id) + "v", real=True)
-            self.g_symbol = symbols("g" + str(self.__id) + "g", real=True)
-            self.m_symbol = symbols("m" + str(self.__id) + "m", real=True)
+            self.symbol = sympy.symbols("v" + str(self.__id) + "v", real=True)
+            self.g_symbol = sympy.symbols("g" + str(self.__id) + "g", real=True)
+            self.m_symbol = sympy.symbols("m" + str(self.__id) + "m", real=True)
             self.__expr = self.symbol
             self.__shadow_expr = self.__expr
             self.__shadow_dependencies = self.__dependencies
@@ -113,23 +114,37 @@ class Variable:
             del self.symbol
             del self.m_symbol
             del self.g_symbol
-            del Variable.var_dic[self.__id]
+            del evar.var_dic[self.__id]
 
     # makes this non temporary variable
     def set_name(self, name):
+        """
+        Sets name for this variable and also makes it a "real" variable.
+        Using it in equations will now longer give expression of defining equation of this variable
+
+        :param name: the new name for the variable
+        """
         self.__shadow_expr = self.__expr
         self.__shadow_dependencies = self.__dependencies
-        self.__id = Variable.dic_id
+        self.__id = evar.dic_id
         self.__dependencies = {self.__id}
-        Variable.dic_id += 1
-        Variable.var_dic[self.__id] = weakref.ref(self)
-        self.symbol = symbols("v" + str(self.__id) + "v")
-        self.g_symbol = symbols("g" + str(self.__id) + "g")
-        self.m_symbol = symbols("m" + str(self.__id) + "m")
+        evar.dic_id += 1
+        evar.var_dic[self.__id] = weakref.ref(self)
+        self.symbol = sympy.symbols("v" + str(self.__id) + "v")
+        self.g_symbol = sympy.symbols("g" + str(self.__id) + "g")
+        self.m_symbol = sympy.symbols("m" + str(self.__id) + "m")
         self.__expr = self.symbol
         self.has_gauss_error = True
         self.has_max_error = True
         self.name = name
+
+    def to_variable(self, name):
+        """
+        Same as set_name. Exists for backwards compatability
+        :param name: new name of this instance
+        :return:
+        """
+        self.set_name(name)
 
     def __get_expr(self):
         if self.__id == -1:
@@ -142,26 +157,32 @@ class Variable:
         expr, dependencies = self.__get_expr()
         for i in dependencies:
             num = i
-            temp_str = temp_str.replace("v" + str(num) + "v", Variable.var_dic[i]().name)
+            temp_str = temp_str.replace("v" + str(num) + "v", evar.var_dic[num]().name)
             temp_str = temp_str.replace("g" + str(num) + "g",
-                                        r"\sigma_{" + options.gauss_error_name + "_{" + Variable.var_dic[
+                                        r"\sigma_{" + options.gauss_error_name + "_{" + evar.var_dic[
                                             i]().name + "}}")
             temp_str = temp_str.replace("m" + str(num) + "m",
-                                        r"\sigma_{" + options.max_error_name + "_{" + Variable.var_dic[i]().name + "}}")
+                                        r"\sigma_{" + options.max_error_name + "_{" + evar.var_dic[i]().name + "}}")
         return temp_str
 
     def get_expr(self, print_as_latex=options.print_as_latex):
+        """
+        Gets expression (equation) of this variable
+
+        :param print_as_latex: wether to print this latex ready or more readable for console. Default is defined by options
+        :return: expression as string
+        """
         expr, dependencies = self.__get_expr()
         if options.simplify_eqs:
-            expr = simplify(expr)
-        expr = self.__replace_ids(latex(expr)) if print_as_latex else self.__replace_ids(str(expr))
+            expr = sympy.simplify(expr)
+        expr = self.__replace_ids(sympy.latex(expr)) if print_as_latex else self.__replace_ids(str(expr))
         return expr
 
     def get_gauss_error_str(self, error_vars=None, print_as_latex=options.print_as_latex):
         iterator = None
         expr, dependencies = self.__get_expr()
-        if error_vars == None:
-            iterator = [Variable.var_dic[i]() for i in dependencies]
+        if error_vars is None:
+            iterator = [evar.var_dic[i]() for i in dependencies]
         else:
             iterator = error_vars
         gauss_error = 0
@@ -172,17 +193,18 @@ class Variable:
             temp_expr *= i.g_symbol
             temp_expr = temp_expr ** 2
             gauss_error += temp_expr
-        gauss_error = sqrt(gauss_error)
+        gauss_error = sympy.sqrt(gauss_error)
         if options.simplify_eqs:
-            gauss_error = simplify(gauss_error)
-        gauss_error = self.__replace_ids(latex(gauss_error)) if print_as_latex else self.__replace_ids(str(gauss_error))
+            gauss_error = sympy.simplify(gauss_error)
+        gauss_error = self.__replace_ids(sympy.latex(gauss_error)) if print_as_latex else self.__replace_ids(
+            str(gauss_error))
         return gauss_error
 
     def get_max_error_str(self, error_vars=None, print_as_latex=options.print_as_latex):
         iterator = None
         expr, dependencies = self.__get_expr()
         if error_vars is None:
-            iterator = [Variable.var_dic[i]() for i in dependencies]
+            iterator = [evar.var_dic[i]() for i in dependencies]
         else:
             iterator = error_vars
         max_error = 0
@@ -194,11 +216,17 @@ class Variable:
             temp_expr = abs(temp_expr)
             max_error += temp_expr
         if options.simplify_eqs:
-            max_error = simplify(max_error)
-        max_error = self.__replace_ids(latex(max_error)) if print_as_latex else self.__replace_ids(str(max_error))
+            max_error = sympy.simplify(max_error)
+        max_error = self.__replace_ids(sympy.latex(max_error)) if print_as_latex else self.__replace_ids(str(max_error))
         return max_error
 
     def show(self, font_size=12):
+        """
+        Shows screen with all equations and values
+
+        :param font_size: font size of everything
+        :return:
+        """
         text = ""
         text += "$" + self.to_str(print_expr=True, print_as_latex=True) + "$\n"
         text += "$" + self.to_str(print_gauss_error=True, print_as_latex=True) + "$\n"
@@ -233,6 +261,7 @@ class Variable:
                 string += self[i].get_value_str(print_as_latex, no_rounding) + "\n"
             return string[:-1]
 
+    # TODO more formatting options like return in align
     def to_str(self, print_values=False, print_expr=False, print_gauss_error=False, print_max_error=False,
                print_all=False, print_as_latex=options.print_as_latex):
         ret_str = ""
@@ -266,8 +295,8 @@ class Variable:
 
     def __getitem__(self, key):
         if self.length > 1:
-            return Variable(self.value[key], self.gauss_error[key], self.max_error[key],
-                            self.name + "_{" + str(key) + "}")
+            return evar(self.value[key], self.gauss_error[key], self.max_error[key],
+                        self.name + "_{" + str(key) + "}")
         else:
             if key == 0:
                 return self.value
@@ -278,6 +307,7 @@ class Variable:
             else:
                 raise IndexError("list index out of range")
 
+    # TODO add check for correlations. sig_stat(x-x+d) e.g. should  just be sig_stat(d)
     # operators
     def __finish_operation(self):
         if type(self.value) is np.ndarray:
@@ -304,8 +334,8 @@ class Variable:
     # + and -
     # +
     def __add__(self, other):
-        RET_VAR = Variable(name="INT_OP")
-        if (type(other) == Variable):
+        RET_VAR = evar(name="INT_OP")
+        if (type(other) == evar):
             RET_VAR.value = self.value + other.value
             RET_VAR.gauss_error = np.sqrt(self.gauss_error ** 2 + other.gauss_error ** 2)
             RET_VAR.max_error = np.abs(self.max_error) + np.abs(other.max_error)
@@ -325,8 +355,8 @@ class Variable:
 
     # -
     def __sub__(self, other):
-        RET_VAR = Variable(name="INT_OP")
-        if type(other) == Variable:
+        RET_VAR = evar(name="INT_OP")
+        if type(other) == evar:
             RET_VAR.value = self.value - other.value
             RET_VAR.gauss_error = np.sqrt(self.gauss_error ** 2 + other.gauss_error ** 2)
             RET_VAR.max_error = np.abs(self.max_error) + np.abs(other.max_error)
@@ -346,7 +376,7 @@ class Variable:
         return -self + other
 
     def __neg__(self):
-        RET_VAR = Variable(name="INT_OP")
+        RET_VAR = evar(name="INT_OP")
         RET_VAR.value = -self.value
         RET_VAR.gauss_error = self.gauss_error
         RET_VAR.max_error = self.max_error
@@ -358,8 +388,8 @@ class Variable:
     # * and /
     # *
     def __mul__(self, other):
-        RET_VAR = Variable(name="INT_OP")
-        if (type(other) == Variable):
+        RET_VAR = evar(name="INT_OP")
+        if type(other) == evar:
             RET_VAR.value = self.value * other.value
             RET_VAR.gauss_error = np.sqrt((other.gauss_error * self.value) ** 2 + (other.value * self.gauss_error) ** 2)
             RET_VAR.max_error = np.abs(other.max_error * self.value) + np.abs(self.max_error * other.value)
@@ -380,8 +410,8 @@ class Variable:
     # /
 
     def __truediv__(self, other):
-        RET_VAR = Variable(name="INT_OP")
-        if type(other) == Variable:
+        RET_VAR = evar(name="INT_OP")
+        if type(other) == evar:
             RET_VAR.value = self.value / other.value
             RET_VAR.gauss_error = np.sqrt(
                 (other.gauss_error * self.value) ** 2 + (other.value * self.gauss_error) ** 2) / (other.value ** 2)
@@ -399,7 +429,7 @@ class Variable:
         return RET_VAR
 
     def __rtruediv__(self, other):
-        RET_VAR = Variable(name="INT_OP")
+        RET_VAR = evar(name="INT_OP")
         RET_VAR.value = other / self.value
         RET_VAR.gauss_error = other * np.abs(self.gauss_error) / self.value ** 2
         RET_VAR.max_error = other * np.abs(self.max_error / self.value ** 2)
@@ -410,8 +440,8 @@ class Variable:
 
     # ^
     def __pow__(self, other):
-        RET_VAR = Variable(name="INT_OP")
-        if type(other) == Variable:
+        RET_VAR = evar(name="INT_OP")
+        if type(other) == evar:
             RET_VAR.value = self.value ** other.value
             inner = (self.gauss_error * other.value) ** 2 + (other.gauss_error * self.value * np.log(self.value)) ** 2
             RET_VAR.gauss_error = np.sqrt(inner * self.value ** (2 * other.value - 2))
@@ -430,7 +460,7 @@ class Variable:
 
     def __rpow__(self, other):
         # other**self
-        RET_VAR = Variable(name="INT_OP")
+        RET_VAR = evar(name="INT_OP")
         RET_VAR.value = other ** self.value
         RET_VAR.gauss_error = np.abs(self.gauss_error) * np.log(other) * other ** self.value
         RET_VAR.max_error = np.abs(self.max_error) * np.log(other) * other ** self.value
@@ -439,8 +469,6 @@ class Variable:
         RET_VAR.__finish_operation()
         return RET_VAR
 
-
-# TODO implement iadd isub imul itruediv
 
 class _Tools:
     # TODO prevent case b=c=0
@@ -470,3 +498,10 @@ class _Tools:
             return round(aT, abs(bExp) + 1), round(bT, abs(bExp) + 1), round(cT, abs(bExp) + 1), aExp
         else:
             return round(aT, abs(cExp) + 1), round(bT, abs(cExp) + 1), round(cT, abs(cExp) + 1), aExp
+
+
+def Variable(a=None, b=None, c=None, d=None):
+    """
+    This exists solely for backwards compatability
+    """
+    return evar(a, b, c, d)
