@@ -54,11 +54,11 @@ print(k)
 
 # if you require the actual equation or for one of the errors you have several options
 # there is .get_gauss_error_str() and k.get_max_error_str() which function identically
-print(k.get_gauss_error_str())  # will give the equation for the gauss_error in latex.
-print(k.get_max_error_str(
+print(k.get_gauss_error())  # will give the equation for the gauss_error in latex.
+print(k.get_max_error(
     print_as_latex=False))  # will give the equation for the maximum errir in a more readable format.
 # normaly the library will check which variables actually have errors and include them accordingly. but you can also do it manually
-print(k.get_gauss_error_str([beta, c]))  # this will only give gaussian_error with respect to beta and c
+print(k.get_gauss_error([beta, c]))  # this will only give gaussian_error with respect to beta and c
 # you can also just get the expression itself
 print(k.get_expr())  # just prints beta**2+c*g/h
 # if you prefer a more copy and paste ready version you can use .to_str()
@@ -80,4 +80,4 @@ m = k + c
 print(m.get_expr())
 # the first print statement will give us: beta**2+c*g/h+c
 # while the second one gives: k+c.
-# the same applies to the errors
+# it does however not have any influence on the values

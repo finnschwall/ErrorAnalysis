@@ -1,10 +1,9 @@
 import sympy
 import matplotlib.pyplot as plt
 import weakref
-import math
 import numpy as np
 from varname import varname
-from error_analysis import options
+from error_analysis import options, tools
 
 
 # TODO keep track wether vars have errors
@@ -109,13 +108,6 @@ class evar:
             else:
                 self.name = name
 
-    def __del__(self):
-        if self.__id != -1:
-            del self.symbol
-            del self.m_symbol
-            del self.g_symbol
-            del evar.var_dic[self.__id]
-
     # makes this non temporary variable
     def set_name(self, name):
         """
@@ -124,46 +116,21 @@ class evar:
 
         :param name: the new name for the variable
         """
-        self.__shadow_expr = self.__expr
-        self.__shadow_dependencies = self.__dependencies
-        self.__id = evar.dic_id
-        self.__dependencies = {self.__id}
-        evar.dic_id += 1
-        evar.var_dic[self.__id] = weakref.ref(self)
-        self.symbol = sympy.symbols("v" + str(self.__id) + "v")
-        self.g_symbol = sympy.symbols("g" + str(self.__id) + "g")
-        self.m_symbol = sympy.symbols("m" + str(self.__id) + "m")
-        self.__expr = self.symbol
-        self.has_gauss_error = True
-        self.has_max_error = True
-        self.name = name
-
-    def to_variable(self, name):
-        """
-        Same as set_name. Exists for backwards compatability
-        :param name: new name of this instance
-        :return:
-        """
-        self.set_name(name)
-
-    def __get_expr(self):
         if self.__id == -1:
-            return self.__expr, self.__dependencies
+            self.__shadow_expr = self.__expr
+            self.__shadow_dependencies = self.__dependencies
+            self.__id = evar.dic_id
+            self.__dependencies = {self.__id}
+            evar.dic_id += 1
+            evar.var_dic[self.__id] = weakref.ref(self)
+            self.symbol = sympy.symbols("v" + str(self.__id) + "v")
+            self.g_symbol = sympy.symbols("g" + str(self.__id) + "g")
+            self.m_symbol = sympy.symbols("m" + str(self.__id) + "m")
+            self.__expr = self.symbol
+            self.name = name
+            self.__finish_operation()
         else:
-            return self.__shadow_expr, self.__shadow_dependencies
-
-    def __replace_ids(self, string):
-        temp_str = string
-        expr, dependencies = self.__get_expr()
-        for i in dependencies:
-            num = i
-            temp_str = temp_str.replace("v" + str(num) + "v", evar.var_dic[num]().name)
-            temp_str = temp_str.replace("g" + str(num) + "g",
-                                        r"\sigma_{" + options.gauss_error_name + "_{" + evar.var_dic[
-                                            i]().name + "}}")
-            temp_str = temp_str.replace("m" + str(num) + "m",
-                                        r"\sigma_{" + options.max_error_name + "_{" + evar.var_dic[i]().name + "}}")
-        return temp_str
+            self.name = name
 
     def get_expr(self, print_as_latex=options.print_as_latex):
         """
@@ -178,47 +145,34 @@ class evar:
         expr = self.__replace_ids(sympy.latex(expr)) if print_as_latex else self.__replace_ids(str(expr))
         return expr
 
-    def get_gauss_error_str(self, error_vars=None, print_as_latex=options.print_as_latex):
-        iterator = None
+    def get_error(self, error_type, error_vars=None, print_as_latex=None):
+        if print_as_latex is None:
+            print_as_latex = options.print_as_latex
         expr, dependencies = self.__get_expr()
         if error_vars is None:
-            iterator = [evar.var_dic[i]() for i in dependencies]
+            error_vars = []
+            for i in dependencies:
+                entry = evar.var_dic[i]()
+                if entry.has_gauss_error and error_type == 0:
+                    error_vars.append(entry)
+                if entry.has_max_error and error_type == 1:
+                    error_vars.append(entry)
+        err = None
+        if error_type == 0:
+            err = tools.get_gauss_expr(expr, error_vars)
         else:
-            iterator = error_vars
-        gauss_error = 0
-        for i in iterator:
-            if not i.has_gauss_error:
-                continue
-            temp_expr = expr.diff(i.symbol)
-            temp_expr *= i.g_symbol
-            temp_expr = temp_expr ** 2
-            gauss_error += temp_expr
-        gauss_error = sympy.sqrt(gauss_error)
+            err = tools.get_max_expr(expr, error_vars)
         if options.simplify_eqs:
-            gauss_error = sympy.simplify(gauss_error)
-        gauss_error = self.__replace_ids(sympy.latex(gauss_error)) if print_as_latex else self.__replace_ids(
-            str(gauss_error))
-        return gauss_error
+            err = sympy.simplify(err)
+        err = self.__replace_ids(sympy.latex(err)) if print_as_latex else self.__replace_ids(
+            str(err))
+        return err
 
-    def get_max_error_str(self, error_vars=None, print_as_latex=options.print_as_latex):
-        iterator = None
-        expr, dependencies = self.__get_expr()
-        if error_vars is None:
-            iterator = [evar.var_dic[i]() for i in dependencies]
-        else:
-            iterator = error_vars
-        max_error = 0
-        for i in iterator:
-            if not i.has_max_error:
-                continue
-            temp_expr = expr.diff(i.symbol)
-            temp_expr *= i.m_symbol
-            temp_expr = abs(temp_expr)
-            max_error += temp_expr
-        if options.simplify_eqs:
-            max_error = sympy.simplify(max_error)
-        max_error = self.__replace_ids(sympy.latex(max_error)) if print_as_latex else self.__replace_ids(str(max_error))
-        return max_error
+    def get_gauss_error(self, error_vars=None, print_as_latex=None):
+        return self.get_error(0, error_vars, print_as_latex)
+
+    def get_max_error(self, error_vars=None, print_as_latex=None):
+        return self.get_error(1, error_vars, print_as_latex)
 
     def show(self, font_size=12):
         """
@@ -248,7 +202,7 @@ class evar:
                 else:
                     return self.name + " = (" + str(a) + " \pm " + str(b) + " \pm " + str(c) + ")"
             else:
-                a, b, c, d = _Tools.transform_to_sig(self.value, self.gauss_error, self.max_error)
+                a, b, c, d = tools.transform_to_sig(self.value, self.gauss_error, self.max_error)
                 if print_as_latex:
                     return self.name + " = (" + str(a) + " \pm " + str(b) + " \pm " + str(c) + r")\cdot 10^{" + str(
                         d) + "}"
@@ -281,12 +235,12 @@ class evar:
             if print_gauss_error or print_max_error:
                 ret_str += "\n"
         if print_gauss_error:
-            ret_str += r"\sigma_{" + options.gauss_error_name + "_{" + self.name + "}}" + "=" + self.get_gauss_error_str(
+            ret_str += r"\sigma_{" + options.gauss_error_name + "_{" + self.name + "}}" + "=" + self.get_gauss_error(
                 print_as_latex=print_as_latex)
             if print_max_error:
                 ret_str += "\n"
         if print_max_error:
-            ret_str += r"\sigma_{" + options.max_error_name + "_{" + self.name + "}}" + "=" + self.get_max_error_str(
+            ret_str += r"\sigma_{" + options.max_error_name + "_{" + self.name + "}}" + "=" + self.get_max_error(
                 print_as_latex=print_as_latex)
         return ret_str
 
@@ -294,6 +248,12 @@ class evar:
         return self.to_str(True, print_as_latex=False)
 
     def __getitem__(self, key):
+        """
+        Return i'th variable
+
+        :param key: index
+        :return: i'th variable if instance is list. otherwise returns value key=0, sig key=1, max key=2
+        """
         if self.length > 1:
             return evar(self.value[key], self.gauss_error[key], self.max_error[key],
                         self.name + "_{" + str(key) + "}")
@@ -335,7 +295,7 @@ class evar:
     # +
     def __add__(self, other):
         RET_VAR = evar(name="INT_OP")
-        if (type(other) == evar):
+        if type(other) == evar:
             RET_VAR.value = self.value + other.value
             RET_VAR.gauss_error = np.sqrt(self.gauss_error ** 2 + other.gauss_error ** 2)
             RET_VAR.max_error = np.abs(self.max_error) + np.abs(other.max_error)
@@ -469,35 +429,45 @@ class evar:
         RET_VAR.__finish_operation()
         return RET_VAR
 
+    def __del__(self):
+        if self.__id != -1:
+            del self.symbol
+            del self.m_symbol
+            del self.g_symbol
+            del evar.var_dic[self.__id]
 
-class _Tools:
-    # TODO prevent case b=c=0
-    @staticmethod
-    def transform_to_sig(a, b, c):
-        a = float(a)
-        b = float(b)
-        c = float(c)
-        aExp = math.floor(math.log10(abs(a)))
-        aT = a * 10 ** -aExp
-        bT = b * 10 ** -aExp
-        cT = c * 10 ** -aExp
-        if options.no_rounding:
-            return aT, bT, cT, aExp
-        if b != 0:
-            bExp = math.floor(math.log10(bT))
-        else:
-            bExp = 1
-        if c != 0:
-            cExp = math.floor(math.log10(cT))
-        else:
-            cExp = 1
+    def to_variable(self, name):
+        """
+        Same as set_name. Exists for backwards compatability
+        :param name: new name of this instance
+        :return:
+        """
+        self.set_name(name)
 
-        if cExp > 1 or bExp > 1:
-            return round(aT), round(bT), round(cT), aExp
-        if abs(bExp) > abs(cExp):
-            return round(aT, abs(bExp) + 1), round(bT, abs(bExp) + 1), round(cT, abs(bExp) + 1), aExp
+    def __get_expr(self):
+        if self.__id == -1:
+            if options.simplify_eqs:
+                return sympy.simplify(self.__expr), self.__dependencies
+            else:
+                return self.__expr, self.__dependencies
         else:
-            return round(aT, abs(cExp) + 1), round(bT, abs(cExp) + 1), round(cT, abs(cExp) + 1), aExp
+            if options.simplify_eqs:
+                return sympy.simplify(self.__shadow_expr), self.__shadow_dependencies
+            else:
+                return self.__shadow_expr, self.__shadow_dependencies
+
+    def __replace_ids(self, string):
+        temp_str = string
+        expr, dependencies = self.__get_expr()
+        for i in dependencies:
+            num = i
+            temp_str = temp_str.replace("v" + str(num) + "v", evar.var_dic[num]().name)
+            temp_str = temp_str.replace("g" + str(num) + "g",
+                                        r"\sigma_{" + options.gauss_error_name + "_{" + evar.var_dic[
+                                            i]().name + "}}")
+            temp_str = temp_str.replace("m" + str(num) + "m",
+                                        r"\sigma_{" + options.max_error_name + "_{" + evar.var_dic[i]().name + "}}")
+        return temp_str
 
 
 def Variable(a=None, b=None, c=None, d=None):
