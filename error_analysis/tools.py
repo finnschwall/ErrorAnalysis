@@ -22,40 +22,52 @@ def get_gauss_expr(expr, error_vars):
         gauss_error += (expr.diff(i.symbol) * i.g_symbol) ** 2
     return sympy.sqrt(gauss_error)
 
+
 def get_length_array(array):
     l = 1
     for i in array:
-        if i.length>1:
-            l=i.length
+        if i.length > 1:
+            l = i.length
     return l
 
 
-#TODO make this less horrible inefficient. use lambdify or something
-def eval(expr, var):
-    listLength = 0
+def eval_e(expr, var):
+    symbols = []
+    values = []
     for i in var:
-        if i.length > listLength:
-            listLength = i.length
-    tExpr = [expr for i in range(listLength)]
-    for curVar in var:
-        if curVar.is_list:
-            for i2 in range(listLength):
-                tExpr[i2] = tExpr[i2].replace(curVar.symbol, curVar.value[i2])
-                tExpr[i2] = tExpr[i2].replace(curVar.g_symbol, curVar.gauss_error[i2])
-                tExpr[i2] = tExpr[i2].replace(curVar.m_symbol, curVar.max_error[i2])
-        else:
-            for i2 in range(listLength):
-                tExpr[i2] = tExpr[i2].replace(curVar.symbol, curVar.value)
-                tExpr[i2] = tExpr[i2].replace(curVar.g_symbol, curVar.gauss_error)
-                tExpr[i2] = tExpr[i2].replace(curVar.m_symbol, curVar.max_error)
-    return tExpr
+        symbols.append(i.symbol)
+        values.append(i.value)
+    f = sympy.lambdify(symbols, expr)
+    return f(*values)
 
 
+def eval_g(expr, var):
+    symbols = []
+    values = []
+    for i in var:
+        symbols.append(i.symbol)
+        symbols.append(i.g_symbol)
+        values.append(i.value)
+        values.append(i.gauss_error)
+    f = sympy.lambdify(symbols, expr)
+    return f(*values)
+
+
+def eval_m(expr, var):
+    symbols = []
+    values = []
+    for i in var:
+        symbols.append(i.symbol)
+        symbols.append(i.m_symbol)
+        values.append(i.value)
+        values.append(i.max_error)
+    f = sympy.lambdify(symbols, expr)
+    return f(*values)
 
 
 # TODO prevent case b=c=0
 
-def transform_to_sig(a, b, c):
+def transform_to_sig(a, b, c, no_rounding=True):
     a = float(a)
     b = float(b)
     c = float(c)
@@ -63,7 +75,7 @@ def transform_to_sig(a, b, c):
     aT = a * 10 ** -aExp
     bT = b * 10 ** -aExp
     cT = c * 10 ** -aExp
-    if options.no_rounding:
+    if no_rounding:
         return aT, bT, cT, aExp
     if b != 0:
         bExp = math.floor(math.log10(bT))

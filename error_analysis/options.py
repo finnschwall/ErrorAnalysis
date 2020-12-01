@@ -1,8 +1,7 @@
-# TODO add option for working with single error
 # TODO implement fast mode
-# BUG options don't work as parameters
-#
-print_as_latex = True
+# TODO implement max digits
+
+as_latex = True
 """when false than string will be printed in more readable format"""
 
 gauss_error_name = "stat"
@@ -19,13 +18,11 @@ simplify_eqs = True
 """simplify equations before printing them
 some simplifcations like sqrt(b*b)=sqrt(b^2)=|b| cannot be prevented"""
 
-
+error_mode = 2
+"""Specify how error output works. Does not effect calculations. For more information look at evar.py/ErrorMode"""
 
 # unfinished or buggy
 
-single_error_mode = False
-"""Will cause all error output to be combined with sigma= sqrt(gauss^2+max^2) 
-Does not change internal calculations. So a set maximum error will still be calculated like a maximum error"""
 
 max_digits = 8
 """At this digit all output will be rounded despite being more precise"""

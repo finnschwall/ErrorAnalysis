@@ -1,6 +1,9 @@
 from error_analysis import options
 from error_analysis import evar
 
+"""
+Only stuff for finding errors
+"""
 
 def create_vars():
     a = evar(1, 0.2, 0.23, name="a")
@@ -38,15 +41,18 @@ def get_info(a):
         info = ""
         info += "\nname           =\t" + a.name
         info += "\nID             =\t" + str(a._evar__id)
-        # info+="\nis_list         =\t"+str(a.is_list)
-        # info+="\nlistLength     =\t"+str(a.length)
+        info += "\nis_list         =\t"+str(a.is_list)
+        if a.is_list:
+            info += "\nlistLength     =\t"+str(a.length)
         info += "\ncontained var  =\t" + str(a._evar__dependencies)
         info += "\nexpression     =\t" + str(a._evar__expr)
         info += "\nvalue          =\t" + str(a.value)
         info += "\nhas_gauss_error=\t" + str(a.has_gauss_error)
-        info += "\nGaussErr       =\t" + str(a.gauss_error)
+        if a.has_gauss_error:
+            info += "\ngausserr       =\t" + str(a.gauss_error)
         info += "\nhas_max_error  =\t" + str(a.has_max_error)
-        info += "\nMaxErr         =\t" + str(a.max_error)
+        if a.has_max_error:
+            info += "\nMaxErr         =\t" + str(a.max_error)
         print(info)
 
 

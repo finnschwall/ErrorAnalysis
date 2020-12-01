@@ -5,10 +5,24 @@ import numpy as np
 from varname import varname
 from error_analysis import options, tools
 
+class ErrorMode(enumerate):
+    """
+    All available modes for getting errors
+    """
+    GAUSS = 0
+    # only gauss error
+    MAX = 1
+    # only max error
+    BOTH = 2
+    # both at the same time
+    COMBINED = 3
+    # combined to one error with sigma= sqrt(gauss^2+max^2)
+    NONE = 4
+    # no errors
 
-# TODO keep track wether vars have errors
 
-
+# TODO check for circular expression and either add warning or fix
+# TODO add support for units
 class evar:
     """
     Data type which supports error propagation
@@ -61,7 +75,7 @@ class evar:
                 self.value = 0
                 self.length = 1
             else:
-                if type(value) is list:
+                if (type(value) is list) or (type(value) is np.ndarray):
                     self.is_list = True
                     self.length = len(value)
                     self.value = np.array(value)
@@ -108,116 +122,185 @@ class evar:
             else:
                 self.name = name
 
-    # makes this non temporary variable
-    def set_name(self, name):
-        """
-        Sets name for this variable and also makes it a "real" variable.
-        Using it in equations will now longer give expression of defining equation of this variable
-
-        :param name: the new name for the variable
-        """
-        if self.__id == -1:
-            self.__shadow_expr = self.__expr
-            self.__shadow_dependencies = self.__dependencies
-            self.__id = evar.dic_id
-            self.__dependencies = {self.__id}
-            evar.dic_id += 1
-            evar.var_dic[self.__id] = weakref.ref(self)
-            self.symbol = sympy.symbols("v" + str(self.__id) + "v")
-            self.g_symbol = sympy.symbols("g" + str(self.__id) + "g")
-            self.m_symbol = sympy.symbols("m" + str(self.__id) + "m")
-            self.__expr = self.symbol
-            self.name = name
-            self.__finish_operation()
-        else:
-            self.name = name
-
-    def get_expr(self, print_as_latex=options.print_as_latex):
+    def get_expr(self, as_latex=None, with_name=True):
         """
         Gets expression (equation) of this variable
 
-        :param print_as_latex: wether to print this latex ready or more readable for console. Default is defined by options
+        :param as_latex: wether to make this latex ready or more readable for console. Default is defined by options
+        :param with_name: wether to add name in front
         :return: expression as string
         """
+        as_latex = options.as_latex if as_latex is None else as_latex
         expr, dependencies = self.__get_expr()
         if options.simplify_eqs:
             expr = sympy.simplify(expr)
-        expr = self.__replace_ids(sympy.latex(expr)) if print_as_latex else self.__replace_ids(str(expr))
+        expr = self.__replace_ids(sympy.latex(expr)) if as_latex else self.__replace_ids(str(expr))
+        if with_name:
+            expr = self.name + " = " + expr
         return expr
 
-    def get_error(self, error_type, error_vars=None, print_as_latex=None):
-        if print_as_latex is None:
-            print_as_latex = options.print_as_latex
+    def get_error(self, error_mode=None, error_vars=None, as_latex=None, with_name=True):
+        """
+        Get error/s equation/s as strings
+
+        :param error_mode: Which error type you want to retrieve. See ErrorMode
+        :param error_vars: Errors will be calculated only in respect to these. Standard is every variable that has error
+        :param as_latex: wether to print latex style
+        :param with_name: wether to print error name in front
+        :return: error equation/s as string
+        """
+        error_mode = options.error_mode if error_mode is None else error_mode
+        if error_mode == ErrorMode.NONE:
+            return ""
+        if error_mode == ErrorMode.BOTH:
+            return self.get_error(ErrorMode.GAUSS, error_vars, as_latex, with_name) + "\n" + \
+                   self.get_error(ErrorMode.MAX, error_vars, as_latex, with_name)
+        if error_mode == ErrorMode.COMBINED:
+            raise Exception("this makes no sense here")
+        if as_latex is None:
+            as_latex = options.as_latex
         expr, dependencies = self.__get_expr()
         if error_vars is None:
             error_vars = []
             for i in dependencies:
                 entry = evar.var_dic[i]()
-                if entry.has_gauss_error and error_type == 0:
+                if entry.has_gauss_error and error_mode == 0:
                     error_vars.append(entry)
-                if entry.has_max_error and error_type == 1:
+                if entry.has_max_error and error_mode == 1:
                     error_vars.append(entry)
         err = None
-        if error_type == 0:
+        if error_mode == 0:
             err = tools.get_gauss_expr(expr, error_vars)
         else:
             err = tools.get_max_expr(expr, error_vars)
         if options.simplify_eqs:
             err = sympy.simplify(err)
-        err = self.__replace_ids(sympy.latex(err)) if print_as_latex else self.__replace_ids(
+        err = self.__replace_ids(sympy.latex(err)) if as_latex else self.__replace_ids(
             str(err))
+        if with_name:
+            if error_mode == ErrorMode.MAX:
+                err = r"\sigma_{" + options.max_error_name + "_{" + self.name + "}}" + " = " + err
+            if error_mode == ErrorMode.GAUSS:
+                err = r"\sigma_{" + options.gauss_error_name + "_{" + self.name + "}}" + " = " + err
         return err
 
-    def get_gauss_error(self, error_vars=None, print_as_latex=None):
-        return self.get_error(0, error_vars, print_as_latex)
+    def get_gauss_error(self, error_vars=None, as_latex=None, with_name=True):
+        """
+        calls get_error with ErrorMode.GAUSS
 
-    def get_max_error(self, error_vars=None, print_as_latex=None):
-        return self.get_error(1, error_vars, print_as_latex)
+        :param error_vars: see get_error
+        :param as_latex: see get_error
+        :param with_name: see get_error
+        :return: see get_error
+        """
+        return self.get_error(ErrorMode.GAUSS, error_vars, as_latex, with_name)
 
+    def get_max_error(self, error_vars=None, as_latex=None, with_name=True):
+        return self.get_error(ErrorMode.MAX, error_vars, as_latex, with_name)
+
+    # TODO add support for options.error_mode
+    # TODO use proper functions
     def show(self, font_size=12):
         """
         Shows screen with all equations and values
 
         :param font_size: font size of everything
-        :return:
         """
         text = ""
-        text += "$" + self.to_str(print_expr=True, print_as_latex=True) + "$\n"
-        text += "$" + self.to_str(print_gauss_error=True, print_as_latex=True) + "$\n"
-        text += "$" + self.to_str(print_max_error=True, print_as_latex=True) + "$\n"
-        t_str = self.get_value_str(print_as_latex=True)
+        text += "$" + self.get_expr(as_latex=True) + "$\n"
+        text += "$" + self.get_gauss_error(as_latex=True) + "$\n"
+        text += "$" + self.get_max_error(as_latex=True) + "$\n"
+        t_str = self.get_value_str(as_latex=True)
         t_str = t_str.replace("\n", "$\n$")
         text += "$" + t_str + "$"
         plt.text(0, 0.1, text, fontsize=font_size)
         plt.axis("off")
         plt.show()
 
+    def get_combined_error(self):
+        """
+        Combines errors by assuming errors are independet
+
+        :return: combined error
+        """
+        return np.sqrt(self.gauss_error ** 2 + self.max_error ** 2)
+
+    def __str__(self):
+        """
+        Calls get_value_str
+
+        :return: formatted string
+        """
+        return self.get_value_str()
+
     # TODO less lazy version that runs faster
-    def get_value_str(self, print_as_latex=options.print_as_latex, no_rounding=options.no_rounding):
+    # TODO fix non scientific version
+    def get_value_str(self, error_mode=None, as_latex=None, no_rounding=None, scientific=True):
+        """
+        Get value or values of instance formatted
+
+        :param error_mode: See ErrorMode
+        :param as_latex: See options
+        :param no_rounding: See options
+        :param scientific: wether to format in scientific notation or not
+        :return: formatted string
+        """
+        no_rounding = options.no_rounding if no_rounding is None else no_rounding
+        as_latex = options.as_latex if as_latex is None else as_latex
+        error_mode = options.error_mode if error_mode is None else error_mode
+        pm = " \pm " if as_latex else " +- "
+        times = "\cdot " if as_latex else "* "
         if self.length == 1:
-            if no_rounding:
-                a, b, c = self.value, self.gauss_error, self.max_error
-                if print_as_latex:
-                    return self.name + " = (" + str(a) + " \pm " + str(b) + " \pm " + str(c) + r")"
-                else:
-                    return self.name + " = (" + str(a) + " \pm " + str(b) + " \pm " + str(c) + ")"
+            a, b, c, d = 0, 0, 0, 0
+            first_error = self.get_combined_error() if error_mode == ErrorMode.COMBINED else self.gauss_error
+            if scientific:
+                a, b, c, d = tools.transform_to_sig(self.value, first_error, self.max_error, no_rounding)
             else:
-                a, b, c, d = tools.transform_to_sig(self.value, self.gauss_error, self.max_error)
-                if print_as_latex:
-                    return self.name + " = (" + str(a) + " \pm " + str(b) + " \pm " + str(c) + r")\cdot 10^{" + str(
-                        d) + "}"
-                else:
-                    return self.name + " = (" + str(a) + " \pm " + str(b) + " \pm " + str(c) + ")\cdot 10^{" + str(
-                        d) + "}"
+                a, b, c, d = tools.transform_to_sig(self.value, first_error, self.max_error, no_rounding)
+                a *= 10 ** d
+                b *= 10 ** d
+                c *= 10 ** d
+            dec_exp = ""
+            if d == 0:
+                pass
+            elif d == 1:
+                dec_exp = times + "10"
+            else:
+                dec_exp = times + "10^{" + str(d) + "}"
+
+            error_str = ""
+            if error_mode == ErrorMode.NONE:
+                return self.name + " = " + str(a) + " " + dec_exp
+            elif error_mode == ErrorMode.BOTH:
+                error_str = pm + str(b) + pm + str(c)
+            elif error_mode == ErrorMode.MAX:
+                error_str = pm + str(c)
+            elif error_mode == ErrorMode.GAUSS:
+                error_str = pm + str(b)
+            elif error_mode == ErrorMode.COMBINED:
+                error_str = pm + str(b)
+            return self.name + " = (" + str(a) + error_str + ") " + dec_exp
+
         else:
             string = ""
             for i in range(self.length):
-                string += self[i].get_value_str(print_as_latex, no_rounding) + "\n"
+                string += self[i].get_value_str(error_mode, as_latex, no_rounding, scientific) + "\n"
             return string[:-1]
 
-    # TODO more formatting options like return in align
+    # TODO should return equations in align etc
     def to_str(self, print_values=False, print_expr=False, print_gauss_error=False, print_max_error=False,
-               print_all=False, print_as_latex=options.print_as_latex):
+               print_all=False, as_latex=options.as_latex):
+        """
+        UNFINISHED. Do not use
+
+        :param print_values:
+        :param print_expr:
+        :param print_gauss_error:
+        :param print_max_error:
+        :param print_all:
+        :param as_latex:
+        :return:
+        """
         ret_str = ""
         if print_values == False and print_expr == False and print_gauss_error == False and print_max_error == False and print_all == False:
             ret_str = self.name
@@ -227,36 +310,38 @@ class evar:
             print_gauss_error = True
             print_max_error = True
         if print_values:
-            ret_str += self.get_value_str(print_as_latex)
+            ret_str += self.get_value_str(as_latex)
             if print_gauss_error or print_max_error or print_expr:
                 ret_str += "\n"
         if print_expr:
-            ret_str += self.name + "=" + self.get_expr(print_as_latex)
+            ret_str += self.name + "=" + self.get_expr(as_latex)
             if print_gauss_error or print_max_error:
                 ret_str += "\n"
         if print_gauss_error:
             ret_str += r"\sigma_{" + options.gauss_error_name + "_{" + self.name + "}}" + "=" + self.get_gauss_error(
-                print_as_latex=print_as_latex)
+                as_latex=as_latex)
             if print_max_error:
                 ret_str += "\n"
         if print_max_error:
             ret_str += r"\sigma_{" + options.max_error_name + "_{" + self.name + "}}" + "=" + self.get_max_error(
-                print_as_latex=print_as_latex)
+                as_latex=as_latex)
         return ret_str
-
-    def __str__(self):
-        return self.to_str(True, print_as_latex=False)
 
     def __getitem__(self, key):
         """
-        Return i'th variable
+        Return i'th variable or sliced variable.
 
-        :param key: index
+        :param key: index or slice
         :return: i'th variable if instance is list. otherwise returns value key=0, sig key=1, max key=2
         """
         if self.length > 1:
-            return evar(self.value[key], self.gauss_error[key], self.max_error[key],
-                        self.name + "_{" + str(key) + "}")
+            name = ""
+            if type(key) is int:
+                name = self.name + "_{" + str(key) + "}"
+            else:
+                name = self.name
+            return evar(self.value[key], self.gauss_error[key], self.max_error[key], name)
+
         else:
             if key == 0:
                 return self.value
@@ -291,6 +376,7 @@ class evar:
             else:
                 self.has_max_error = True
 
+    # TODO implement iadd isub imul itruediv completely
     # + and -
     # +
     def __add__(self, other):
@@ -304,7 +390,7 @@ class evar:
         else:
             RET_VAR.value = self.value + other
             RET_VAR.gauss_error = self.gauss_error
-            RET_VAR.max_error = np.abs(self.max_error)
+            RET_VAR.max_error = self.max_error
             RET_VAR.__expr = self.__expr + other
             RET_VAR.__dependencies = self.__dependencies
         RET_VAR.__finish_operation()
@@ -312,6 +398,14 @@ class evar:
 
     def __radd__(self, other):
         return self + other
+
+    def __iadd__(self, other):
+        if type(other) == evar:
+            raise NotImplementedError("Currently only supported with numbers or lists but not evar")
+        else:
+            self.value += other
+            self.__expr += other
+            return self
 
     # -
     def __sub__(self, other):
@@ -334,6 +428,14 @@ class evar:
     # TODO make this less lazy and more efficient
     def __rsub__(self, other):
         return -self + other
+
+    def __isub__(self, other):
+        if type(other) == evar:
+            raise NotImplementedError("Currently only supported with numbers or lists but not evar")
+        else:
+            self.value -= other
+            self.__expr -= other
+            return self
 
     def __neg__(self):
         RET_VAR = evar(name="INT_OP")
@@ -367,6 +469,16 @@ class evar:
     def __rmul__(self, other):
         return self * other
 
+    def __imul__(self, other):
+        if type(other) == evar:
+            raise NotImplementedError("Currently only supported with numbers or lists but not evar")
+        else:
+            self.max_error *= abs(other)
+            self.gauss_error *= abs(other)
+            self.value *= other
+            self.__expr *= other
+            return self
+
     # /
 
     def __truediv__(self, other):
@@ -397,6 +509,16 @@ class evar:
         RET_VAR.__dependencies = self.__dependencies
         RET_VAR.__finish_operation()
         return RET_VAR
+
+    def __itruediv__(self, other):
+        if type(other) == evar:
+            raise NotImplementedError("Currently only supported with numbers or lists but not evar")
+        else:
+            self.max_error /= abs(other)
+            self.gauss_error /= abs(other)
+            self.value /= other
+            self.__expr /= other
+            return self
 
     # ^
     def __pow__(self, other):
@@ -429,12 +551,45 @@ class evar:
         RET_VAR.__finish_operation()
         return RET_VAR
 
+    def __ipow__(self, other):
+        if type(other) == evar:
+            raise NotImplementedError("Currently only supported with numbers or lists but not evar")
+        else:
+            self.value **= other
+            self.gauss_error = np.abs(self.gauss_error) * np.log(other) * other ** self.value
+            self.max_error = np.abs(self.max_error) * np.log(other) * other ** self.value
+            self.__expr **= other
+            return self
+
     def __del__(self):
         if self.__id != -1:
             del self.symbol
             del self.m_symbol
             del self.g_symbol
             del evar.var_dic[self.__id]
+
+    def set_name(self, name):
+        """
+        Sets name for this variable and also makes it a "real" variable.
+        Using it in equations will now longer give expression of defining equation of this variable
+
+        :param name: the new name for the variable
+        """
+        if self.__id == -1:
+            self.__shadow_expr = self.__expr
+            self.__shadow_dependencies = self.__dependencies
+            self.__id = evar.dic_id
+            self.__dependencies = {self.__id}
+            evar.dic_id += 1
+            evar.var_dic[self.__id] = weakref.ref(self)
+            self.symbol = sympy.symbols("v" + str(self.__id) + "v")
+            self.g_symbol = sympy.symbols("g" + str(self.__id) + "g")
+            self.m_symbol = sympy.symbols("m" + str(self.__id) + "m")
+            self.__expr = self.symbol
+            self.name = name
+            self.__finish_operation()
+        else:
+            self.name = name
 
     def to_variable(self, name):
         """
@@ -472,6 +627,6 @@ class evar:
 
 def Variable(a=None, b=None, c=None, d=None):
     """
-    This exists solely for backwards compatability
+    This exists solely for backwards compatibility
     """
     return evar(a, b, c, d)
