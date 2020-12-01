@@ -1,24 +1,12 @@
+"""
+Data type for error propagation and ErrorModes
+"""
 import sympy
 import matplotlib.pyplot as plt
 import weakref
 import numpy as np
 from varname import varname
 from error_analysis import options, tools
-
-class ErrorMode(enumerate):
-    """
-    All available modes for getting errors
-    """
-    GAUSS = 0
-    # only gauss error
-    MAX = 1
-    # only max error
-    BOTH = 2
-    # both at the same time
-    COMBINED = 3
-    # combined to one error with sigma= sqrt(gauss^2+max^2)
-    NONE = 4
-    # no errors
 
 
 # TODO check for circular expression and either add warning or fix
@@ -32,14 +20,35 @@ class evar:
 
     def __init__(self, value=None, gauss_error=None, max_error=None, name=None, unit=None):
         """
-        Creates new instance of a variable. All non-set variables are assumed to be 0.
+        Parameters
+        ----------
+        value: float or list
+            The value/s of the variable. Can be list or single value
+        gauss_error: optional, float or list
+            error which is propagated by gaussian estimation.
+        max_error: optional, float or list
+            error which is propagated by maximum error estimation.
+        name: optional string
+            Display name in everything string related. Can be latex style
+        unit
+            not implemented yet
 
-        :param value: The value/s of the variable. Can be list or single value
-        :param gauss_error: error which is propagated by gaussian estimation. If value is list but this is not,
-        :param max_error: error which is propagated by maximum error estimation.
-        :param name: Display name in everything string related. Can be latex style
-        :param unit: not implemented yet
+        Notes
+        ----------
+        This data type can both function as a list or a single value. If this is an instance all operations will be
+        perfomed element wise. So
+
+            a*b = a_i*b_i.
+        The error parameters are optional and can be floats or lists. A non-set error will be assumed to be zero.
+        If the value of an instance is a list but only a single error is provided, it will be transformed to a list.
+
+        Examples
+        ----------
+
+            evar([1,2], max_err= 0.5) = (1 +- 0 +- 0.5), (2 +- 0 +- 0.5)
+            evar(4,2) = (4 +- 2 +- 0)
         """
+
         # keep track of all involved variables
         # it should be tested if this is really faster than iterating over all existing variables
 
@@ -126,9 +135,16 @@ class evar:
         """
         Gets expression (equation) of this variable
 
-        :param as_latex: wether to make this latex ready or more readable for console. Default is defined by options
-        :param with_name: wether to add name in front
-        :return: expression as string
+        Parameters
+        ----------
+        as_latex
+            wether to make this latex ready or more readable for console. Default is defined by options
+        with_name
+            wether to add name in front
+
+        Returns
+        -------
+        expression as string
         """
         as_latex = options.as_latex if as_latex is None else as_latex
         expr, dependencies = self.__get_expr()
@@ -141,13 +157,21 @@ class evar:
 
     def get_error(self, error_mode=None, error_vars=None, as_latex=None, with_name=True):
         """
-        Get error/s equation/s as strings
+        Get equation of error/s
 
-        :param error_mode: Which error type you want to retrieve. See ErrorMode
-        :param error_vars: Errors will be calculated only in respect to these. Standard is every variable that has error
-        :param as_latex: wether to print latex style
-        :param with_name: wether to print error name in front
-        :return: error equation/s as string
+        Parameters
+        ----------
+        error_mode : ErrorMode
+            Which error type you want to retrieve. See 'ErrorMode' 'evars.ErrorMode'
+        error_vars
+            Errors will be calculated only in respect to these. Standard is every variable that has error
+        as_latex
+            wether to print latex style
+        with_name
+            wether to print error name in front
+        Returns
+        -------
+            error equation/s as string
         """
         error_mode = options.error_mode if error_mode is None else error_mode
         if error_mode == ErrorMode.NONE:
@@ -187,11 +211,17 @@ class evar:
     def get_gauss_error(self, error_vars=None, as_latex=None, with_name=True):
         """
         calls get_error with ErrorMode.GAUSS
+        Parameters
+        ----------
+        error_vars
+            see evar.get_error
+        as_latex
+            see evar.get_error
+        with_name
+            see evar.get_error
+        Returns
+        -------
 
-        :param error_vars: see get_error
-        :param as_latex: see get_error
-        :param with_name: see get_error
-        :return: see get_error
         """
         return self.get_error(ErrorMode.GAUSS, error_vars, as_latex, with_name)
 
@@ -248,8 +278,8 @@ class evar:
         no_rounding = options.no_rounding if no_rounding is None else no_rounding
         as_latex = options.as_latex if as_latex is None else as_latex
         error_mode = options.error_mode if error_mode is None else error_mode
-        pm = " \pm " if as_latex else " +- "
-        times = "\cdot " if as_latex else "* "
+        pm = r" \pm " if as_latex else " +- "
+        times = r"\cdot " if as_latex else "* "
         if self.length == 1:
             a, b, c, d = 0, 0, 0, 0
             first_error = self.get_combined_error() if error_mode == ErrorMode.COMBINED else self.gauss_error
@@ -594,8 +624,10 @@ class evar:
     def to_variable(self, name):
         """
         Same as set_name. Exists for backwards compatability
-        :param name: new name of this instance
-        :return:
+        Parameters
+        ----------
+        name
+            new name of this instance
         """
         self.set_name(name)
 
@@ -625,8 +657,17 @@ class evar:
         return temp_str
 
 
-def Variable(a=None, b=None, c=None, d=None):
+class ErrorMode(enumerate):
     """
-    This exists solely for backwards compatibility
+    All available modes for getting errors
     """
-    return evar(a, b, c, d)
+    GAUSS = 0
+    """only gauss error"""
+    MAX = 1
+    """only max error"""
+    BOTH = 2
+    """ both at the same time """
+    COMBINED = 3
+    """ combined to one error with sigma= sqrt(gauss^2+max^2) """
+    NONE = 4
+    """ no errors"""
