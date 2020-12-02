@@ -1,17 +1,54 @@
+"""
+Contains often used operators.
+
+Notes
+----------
+a stands for arc.
+
+    asin=arcsin
+
+"""
 # TODO check for values i.e is somebody trying to calculate log(-10) or something
 from error_analysis.evar import *
 from error_analysis import tools
 
-"""
-Contains often used operators.
- 
-"""
+
 op_var = sympy.symbols("op_var", real=True)
 op_var_e = sympy.symbols("op_var_e", real=True)
 
 
 # About 80-110 times slower than pre coded numpy expression
 def single_operator(expr, x):
+    """
+
+    Parameters
+    ----------
+    expr
+        function pointer to sympy operator
+    x
+        variable to which this should be applied
+
+    Returns
+    -------
+    error_analysis.evar.evar
+
+    Examples
+    ----------
+    This is the current implementation of cosh
+
+        if type(x) is evar:
+            return single_operator(sympy.acosh, x)
+        else:
+            return np.arccosh(x)
+
+    Notes
+    -------
+    Operators can be found at https://docs.sympy.org/latest/modules/functions/index.html .
+    While being very slow (about 100-200 times compared to native), this can be helpful if a required operator is not implemented yet.
+    Also if you see values that you deem unrealistic, there is a possibility that you've
+    encountered a bug. Since this runs completely independent of the normal mechanism of evar you can check the
+    results with this.
+    """
     RET_VAR = evar(name="INT_OP")
     RET_VAR._evar__dependencies = x._evar__dependencies
     RET_VAR._evar__expr = expr(x._evar__expr)
@@ -28,10 +65,32 @@ def single_operator(expr, x):
 # about (before optim 380) 80-100 times slower than pre coded numpy expression.
 def custom_operation(expr, variables):
     """
+    Alternative way to calculate entire expression.
 
-    :param expr: equation as string. all variables must be named v0... vi
-    :param variables: the vi as var list
-    :return:
+    .. warning:: This can be several hundred times slower and crash the program
+    Parameters
+    ----------
+    expr : str
+        equation as string. all variables must be named v0... vi
+    variables : list
+        the vi as list of variables
+
+    Returns
+    -------
+    error_analysis.evar.evar
+
+
+    Examples
+    ----------
+    This
+
+        x = operators.custom_operation("cos(v0)*v1+v2", [a, d, f])
+    is equal to::
+
+        x=cos(a)*d+f
+    Notes
+    ----------
+    Values may vary from native evar calculations at high precision.
     """
     RET_VAR = evar(name="INT_OP")
     dependencies = set()

@@ -16,7 +16,7 @@ def create_vars():
 
 
 def get_current_id():
-    return evar.dic_id - 1
+    return evar.__dic_id - 1
 
 
 def get_id(a):
@@ -24,13 +24,13 @@ def get_id(a):
 
 
 def get_expr(a):
-    return evar.var_dic[a._evar__id]()._evar__expr
+    return evar.__var_dic[a._evar__id]()._evar__expr
 
 
 def get_dic_info():
     a = []
-    for i in evar.var_dic:
-        get_info(evar.var_dic[i]())
+    for i in evar.__var_dic:
+        get_info(evar.__var_dic[i]())
 
 
 def get_info(a):

@@ -7,17 +7,13 @@ options.as_latex = False
 # all options are overridden by specified function parameters. So you can e.g. still get the equation of a variable
 # by using var.get_expr(as_latex=True)
 
-# one very important option which is also a parameter for many functions is error_mode
-# options.error_mode = ErrorMode.COMBINED
-# this would cause all output to be reduced to one error which is calculated by sigma= sqrt(gauss^2+max^2)
-# options.error_mode = ErrorMode.NONE would ignore errors altogether
-
 
 ####evar declaration####
 # The main purpose of this library is to provide a data type which supports error propagation
 # this type is called evar
 # the constructor params are: evar(value, gauss_error, max_error, name)
 # the errors are characterized by their way of propagation (square or maximum)
+# gauss error is normally statistical error, max error is normally systematic error
 # lists are supported for every type (except name obviously)
 # all non specified types are supposed to be 0. (or list of 0s)
 # in the list case every operation is perfomed element wise
@@ -52,9 +48,15 @@ print(j)
 # list slicing is also supported
 h2 = h[1:3]
 # this will give us a new variable which has the same values as h between 1 and 3
-print(h2)
 
-# we see that the values are printed nicely in scientific format and the relevant digits are
+#to acces the values in a variable we can use value gauss_error and max_error
+print(h.value)
+print(h.gauss_error)
+print(h.max_error)
+
+# we see that the values here
+print(h2)
+# are printed nicely in scientific format and the relevant digits are
 # calculated automatically. If something more specific is desired you can use get_value_str
 print(h2.get_value_str(error_mode=ErrorMode.GAUSS, no_rounding=True))  # this will print just the gaussian error and
 # not automatic rounding will be perfomed.

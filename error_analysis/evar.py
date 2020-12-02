@@ -13,22 +13,24 @@ from error_analysis import options, tools
 # TODO add support for units
 class evar:
     """
-    Data type which supports error propagation
+    Data type which supports error propagation.
+
+    Since most parameters can fall back to options, all non-optional parameters are marked.
     """
-    var_dic = dict()
-    dic_id = 0
+    __var_dic = dict()
+    __dic_id = 0
 
     def __init__(self, value=None, gauss_error=None, max_error=None, name=None, unit=None):
         """
         Parameters
         ----------
-        value: float or list
+        value: float or list, not optional
             The value/s of the variable. Can be list or single value
-        gauss_error: optional, float or list
+        gauss_error: float or list
             error which is propagated by gaussian estimation.
-        max_error: optional, float or list
+        max_error:  float or list
             error which is propagated by maximum error estimation.
-        name: optional string
+        name: string
             Display name in everything string related. Can be latex style
         unit
             not implemented yet
@@ -51,7 +53,12 @@ class evar:
 
         # keep track of all involved variables
         # it should be tested if this is really faster than iterating over all existing variables
-
+        self.value = None
+        """Where actual value/s are stored. Is either np.ndarray or single value"""
+        self.gauss_error = None
+        """Where actual gauss errors are stored. Is either np.ndarray or single value"""
+        self.max_error = None
+        """Where actual max errors are stored. Is either np.ndarray or single value"""
         if unit is not None:
             # add unit support for operands.
             print("thats not finished yet")
@@ -63,12 +70,12 @@ class evar:
             self.has_max_error = True
         else:
             self.__dependencies = set()
-            self.__id = evar.dic_id
+            self.__id = evar.__dic_id
             self.__dependencies.add(self.__id)
 
-            evar.dic_id += 1
+            evar.__dic_id += 1
             # to ensure correct garbage collection
-            evar.var_dic[self.__id] = weakref.ref(self)
+            evar.__var_dic[self.__id] = weakref.ref(self)
 
             self.symbol = sympy.symbols("v" + str(self.__id) + "v", real=True)
             self.g_symbol = sympy.symbols("g" + str(self.__id) + "g", real=True)
@@ -88,6 +95,7 @@ class evar:
                     self.is_list = True
                     self.length = len(value)
                     self.value = np.array(value)
+
                 else:
                     self.is_list = False
                     self.length = 1
@@ -137,9 +145,9 @@ class evar:
 
         Parameters
         ----------
-        as_latex
+        as_latex : bool
             wether to make this latex ready or more readable for console. Default is defined by options
-        with_name
+        with_name : bool
             wether to add name in front
 
         Returns
@@ -162,12 +170,12 @@ class evar:
         Parameters
         ----------
         error_mode : ErrorMode
-            Which error type you want to retrieve. See 'ErrorMode' 'evars.ErrorMode'
-        error_vars
+            Which error type you want to retrieve.
+        error_vars : list of evars
             Errors will be calculated only in respect to these. Standard is every variable that has error
-        as_latex
+        as_latex : bool
             wether to print latex style
-        with_name
+        with_name : bool
             wether to print error name in front
         Returns
         -------
@@ -187,7 +195,7 @@ class evar:
         if error_vars is None:
             error_vars = []
             for i in dependencies:
-                entry = evar.var_dic[i]()
+                entry = evar.__var_dic[i]()
                 if entry.has_gauss_error and error_mode == 0:
                     error_vars.append(entry)
                 if entry.has_max_error and error_mode == 1:
@@ -210,22 +218,18 @@ class evar:
 
     def get_gauss_error(self, error_vars=None, as_latex=None, with_name=True):
         """
-        calls get_error with ErrorMode.GAUSS
-        Parameters
-        ----------
-        error_vars
-            see evar.get_error
-        as_latex
-            see evar.get_error
-        with_name
-            see evar.get_error
-        Returns
-        -------
+        calls get_error with `ErrorMode.GAUSS`
 
+        Parameters are equal to `get_error`.
         """
         return self.get_error(ErrorMode.GAUSS, error_vars, as_latex, with_name)
 
     def get_max_error(self, error_vars=None, as_latex=None, with_name=True):
+        """
+        calls get_error with `ErrorMode.MAX`
+
+        Parameters are equal to `get_error`.
+        """
         return self.get_error(ErrorMode.MAX, error_vars, as_latex, with_name)
 
     # TODO add support for options.error_mode
@@ -234,7 +238,10 @@ class evar:
         """
         Shows screen with all equations and values
 
-        :param font_size: font size of everything
+        Parameters
+        -------
+        font_size : int
+            font size of everything
         """
         text = ""
         text += "$" + self.get_expr(as_latex=True) + "$\n"
@@ -249,17 +256,23 @@ class evar:
 
     def get_combined_error(self):
         """
-        Combines errors by assuming errors are independet
+        Combines errors by assuming errors are independet.
 
-        :return: combined error
+            sig_combined = sqrt(sig_gauss**2+sig_max**2)
+
+        Returns
+        -------
+        combined error
         """
         return np.sqrt(self.gauss_error ** 2 + self.max_error ** 2)
 
     def __str__(self):
         """
-        Calls get_value_str
+        Calls get_value_str with parameters specified in options
 
-        :return: formatted string
+        Returns
+        -------
+        formatted string
         """
         return self.get_value_str()
 
@@ -267,13 +280,22 @@ class evar:
     # TODO fix non scientific version
     def get_value_str(self, error_mode=None, as_latex=None, no_rounding=None, scientific=True):
         """
-        Get value or values of instance formatted
+        Get value or values of this instance formatted
 
-        :param error_mode: See ErrorMode
-        :param as_latex: See options
-        :param no_rounding: See options
-        :param scientific: wether to format in scientific notation or not
-        :return: formatted string
+        Returns
+        -------
+        error_mode : ErrorMode
+            See `ErrorMode`
+        as_latex : bool
+            See `error_analysis.options.as_latex`
+        no_rounding : bool
+            See `error_analysis.options.no_rounding`
+        scientific : bool
+            wether to format in scientific notation or not
+
+        Returns
+        -------
+        formatted string
         """
         no_rounding = options.no_rounding if no_rounding is None else no_rounding
         as_latex = options.as_latex if as_latex is None else as_latex
@@ -321,15 +343,7 @@ class evar:
     def to_str(self, print_values=False, print_expr=False, print_gauss_error=False, print_max_error=False,
                print_all=False, as_latex=options.as_latex):
         """
-        UNFINISHED. Do not use
-
-        :param print_values:
-        :param print_expr:
-        :param print_gauss_error:
-        :param print_max_error:
-        :param print_all:
-        :param as_latex:
-        :return:
+        .. warning:: Unfinished. Do not use!
         """
         ret_str = ""
         if print_values == False and print_expr == False and print_gauss_error == False and print_max_error == False and print_all == False:
@@ -361,8 +375,18 @@ class evar:
         """
         Return i'th variable or sliced variable.
 
-        :param key: index or slice
-        :return: i'th variable if instance is list. otherwise returns value key=0, sig key=1, max key=2
+        Parameters
+        -------
+        key : index, slice
+            either single number or something like a:b:c
+
+        Returns
+        -------
+        sliced variable if instance is list. otherwise returns value key=0, sig key=1, max key=2
+
+        Examples
+        -------
+        just like you would use normal lists. All operations are supported e.g. a[1], a[1:4], a[3:6:2] a[-1].....
         """
         if self.length > 1:
             name = ""
@@ -596,22 +620,25 @@ class evar:
             del self.symbol
             del self.m_symbol
             del self.g_symbol
-            del evar.var_dic[self.__id]
+            del evar.__var_dic[self.__id]
 
     def set_name(self, name):
         """
         Sets name for this variable and also makes it a "real" variable.
         Using it in equations will now longer give expression of defining equation of this variable
 
-        :param name: the new name for the variable
+        Parameters
+        -------
+        name : string
+            the new name for the variable
         """
         if self.__id == -1:
             self.__shadow_expr = self.__expr
             self.__shadow_dependencies = self.__dependencies
-            self.__id = evar.dic_id
+            self.__id = evar.__dic_id
             self.__dependencies = {self.__id}
-            evar.dic_id += 1
-            evar.var_dic[self.__id] = weakref.ref(self)
+            evar.__dic_id += 1
+            evar.__var_dic[self.__id] = weakref.ref(self)
             self.symbol = sympy.symbols("v" + str(self.__id) + "v")
             self.g_symbol = sympy.symbols("g" + str(self.__id) + "g")
             self.m_symbol = sympy.symbols("m" + str(self.__id) + "m")
@@ -648,23 +675,36 @@ class evar:
         expr, dependencies = self.__get_expr()
         for i in dependencies:
             num = i
-            temp_str = temp_str.replace("v" + str(num) + "v", evar.var_dic[num]().name)
+            temp_str = temp_str.replace("v" + str(num) + "v", evar.__var_dic[num]().name)
             temp_str = temp_str.replace("g" + str(num) + "g",
-                                        r"\sigma_{" + options.gauss_error_name + "_{" + evar.var_dic[
+                                        r"\sigma_{" + options.gauss_error_name + "_{" + evar.__var_dic[
                                             i]().name + "}}")
             temp_str = temp_str.replace("m" + str(num) + "m",
-                                        r"\sigma_{" + options.max_error_name + "_{" + evar.var_dic[i]().name + "}}")
+                                        r"\sigma_{" + options.max_error_name + "_{" + evar.__var_dic[i]().name + "}}")
         return temp_str
 
 
 class ErrorMode(enumerate):
     """
     All available modes for getting errors
+
+    Examples
+    Suppose we have
+
+        a = (15 +-1 +-2)
+    Than the different modes will look like
+
+        GAUSS, a = (15 +-1)
+        MAX, a = (15 +-2)
+        BOTH = (15 +-1 +-2)
+        COMBINED a = (15.0 +-2.2)
+        NONE a = 15
+    -------
     """
     GAUSS = 0
-    """only gauss error"""
+    """only gauss error. is usually statistical error"""
     MAX = 1
-    """only max error"""
+    """only max error. is usually systematic error"""
     BOTH = 2
     """ both at the same time """
     COMBINED = 3
