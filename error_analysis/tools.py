@@ -3,11 +3,9 @@ Collection of internal methods that are often used and or not specific to a clas
 
 """
 
-
 import math
 import sympy
-
-
+import numpy as np
 
 
 def get_max_expr(expr, error_vars):
@@ -93,6 +91,15 @@ def transform_to_sig(a, b, c, no_rounding=True):
         return round(aT, abs(bExp) + 1), round(bT, abs(bExp) + 1), round(cT, abs(bExp) + 1), aExp
     else:
         return round(aT, abs(cExp) + 1), round(bT, abs(cExp) + 1), round(cT, abs(cExp) + 1), aExp
+
+
+def is_number_list(x):
+    ind = 0
+    for i in x:
+        ind += 1
+        if not np.isfinite(i):
+            return False, ind
+    return True, -1
 
 
 def Variable(a=None, b=None, c=None, d=None):

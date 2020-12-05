@@ -68,7 +68,7 @@ print(h2.get_value_str(error_mode=ErrorMode.GAUSS, no_rounding=True))  # this wi
 k = beta ** 2 + c * g / h
 
 # for more advanced stuff use the operators module
-# if you do from error_analysis import * it will be included automatically
+from error_analysis.operators import *
 l = exp(beta + h)
 # NEVER EVER do this:
 # l = sin(l)

@@ -5,6 +5,7 @@ import sympy
 import matplotlib.pyplot as plt
 import weakref
 import numpy as np
+import warnings
 from varname import varname
 from error_analysis import options, tools
 
@@ -19,6 +20,7 @@ class evar:
     """
     __var_dic = dict()
     __dic_id = 0
+    __gc_prevention = []
 
     def __init__(self, value=None, gauss_error=None, max_error=None, name=None, unit=None):
         """
@@ -72,7 +74,8 @@ class evar:
             self.__dependencies = set()
             self.__id = evar.__dic_id
             self.__dependencies.add(self.__id)
-
+            if not options.correct_garbage_collection:
+                evar.__gc_prevention.append(self)
             evar.__dic_id += 1
             # to ensure correct garbage collection
             evar.__var_dic[self.__id] = weakref.ref(self)
@@ -109,6 +112,8 @@ class evar:
                     self.gauss_error = np.zeros(self.length)
             else:
                 if type(gauss_error) == list:
+                    if len(gauss_error) != self.length:
+                        raise Exception("Size of value and gauss error don't match")
                     self.gauss_error = np.array(gauss_error)
                 else:
                     if self.length == 1:
@@ -125,6 +130,8 @@ class evar:
                     self.max_error = np.zeros(self.length)
             else:
                 if type(max_error) == list:
+                    if len(max_error) != self.length:
+                        raise Exception("Size of value and max error don't match")
                     self.max_error = max_error
                 else:
                     if self.length == 1:
@@ -188,7 +195,11 @@ class evar:
             return self.get_error(ErrorMode.GAUSS, error_vars, as_latex, with_name) + "\n" + \
                    self.get_error(ErrorMode.MAX, error_vars, as_latex, with_name)
         if error_mode == ErrorMode.COMBINED:
-            raise Exception("this makes no sense here")
+            temp = options.gauss_error_name
+            options.gauss_error_name = ""
+            ret = self.get_error(ErrorMode.GAUSS, error_vars, as_latex, with_name)
+            options.gauss_error_name = temp
+            return ret
         if as_latex is None:
             as_latex = options.as_latex
         expr, dependencies = self.__get_expr()
@@ -276,8 +287,9 @@ class evar:
         """
         return self.get_value_str()
 
-    # TODO less lazy version that runs faster
+    # TODO less lazy version that runs faster. especially if garbage_colleciton=false
     # TODO fix non scientific version
+    # FIXME add trailing zeros. e.g. (5.1+-0.33)=(5.10+-0.33)
     def get_value_str(self, error_mode=None, as_latex=None, no_rounding=None, scientific=True):
         """
         Get value or values of this instance formatted
@@ -303,17 +315,26 @@ class evar:
         pm = r" \pm " if as_latex else " +- "
         times = r"\cdot " if as_latex else "* "
         if self.length == 1:
+            if not np.isfinite(self.value):
+                warnings.warn("Value is not real number. Behaviour in equations undefined. Did you perform bad "
+                              "operation like log(-5)?")
+                return self.name + " = " + str(self.value) + " +- " + str(self.gauss_error) + " +- " + str(
+                    self.max_error)
             a, b, c, d = 0, 0, 0, 0
             first_error = self.get_combined_error() if error_mode == ErrorMode.COMBINED else self.gauss_error
-            if scientific:
-                a, b, c, d = tools.transform_to_sig(self.value, first_error, self.max_error, no_rounding)
-            else:
+            if not np.isfinite(self.gauss_error) or not np.isfinite(self.max_error):
+                warnings.warn("On of the errors is not real number. Behaviour in equations undefined. Did you perform"
+                              " bad operation like log(-5)?")
+                return self.name + " = " + str(self.value) + " +- " + str(self.gauss_error) + " +- " + str(
+                    self.max_error)
+            a, b, c, d = tools.transform_to_sig(self.value, first_error, self.max_error, no_rounding)
+            if not scientific:
                 a, b, c, d = tools.transform_to_sig(self.value, first_error, self.max_error, no_rounding)
                 a *= 10 ** d
                 b *= 10 ** d
                 c *= 10 ** d
             dec_exp = ""
-            if d == 0:
+            if d == 0 or not scientific:
                 pass
             elif d == 1:
                 dec_exp = times + "10"
@@ -493,6 +514,7 @@ class evar:
 
     def __neg__(self):
         RET_VAR = evar(name="INT_OP")
+        RET_VAR.name = self.name
         RET_VAR.value = -self.value
         RET_VAR.gauss_error = self.gauss_error
         RET_VAR.max_error = self.max_error
@@ -517,6 +539,7 @@ class evar:
             RET_VAR.max_error = self.max_error * other
             RET_VAR.__expr = self.__expr * other
             RET_VAR.__dependencies = self.__dependencies
+            RET_VAR.name = self.name
         RET_VAR.__finish_operation()
         return RET_VAR
 
@@ -530,7 +553,6 @@ class evar:
             self.max_error *= abs(other)
             self.gauss_error *= abs(other)
             self.value *= other
-            self.__expr *= other
             return self
 
     # /
@@ -568,10 +590,11 @@ class evar:
         if type(other) == evar:
             raise NotImplementedError("Currently only supported with numbers or lists but not evar")
         else:
-            self.max_error /= abs(other)
-            self.gauss_error /= abs(other)
-            self.value /= other
-            self.__expr /= other
+            if other == 0:
+                raise Exception("Divide by zero encountered. Math police is on their way")
+            self.max_error = self.max_error / abs(other)
+            self.gauss_error = self.gauss_error / abs(other)
+            self.value = self.value / other
             return self
 
     # ^
@@ -612,7 +635,6 @@ class evar:
             self.value **= other
             self.gauss_error = np.abs(self.gauss_error) * np.log(other) * other ** self.value
             self.max_error = np.abs(self.max_error) * np.log(other) * other ** self.value
-            self.__expr **= other
             return self
 
     def __del__(self):
@@ -682,6 +704,9 @@ class evar:
             temp_str = temp_str.replace("m" + str(num) + "m",
                                         r"\sigma_{" + options.max_error_name + "_{" + evar.__var_dic[i]().name + "}}")
         return temp_str
+
+    def __len__(self):
+        return self.length
 
 
 class ErrorMode(enumerate):

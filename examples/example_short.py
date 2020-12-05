@@ -11,12 +11,15 @@ d = evar(200, 0.41, 1.12, "d")
 e = evar(9)
 f = evar(100, name="f")
 
+k = np.array([1,2,3])
+print(k)
+x = evar(k,[0.1,0.2,0.3],[0.1,0.1,0.1])
 
-lin_func = lambda x , m ,b : m*x+b
-reg = Regression(lin_func, a, c)
-plt.errorbar(reg.x , reg.y, yerr=reg.y_err , fmt='none')
-plt.plot(reg.x, reg.y, "x")
-plt.plot(reg.x, reg.y_reg)
-plt.show()
+# lin_func = lambda x , m ,b : m*x+b
+# reg = Regression(lin_func, a, c, [2, 2])
+# plt.errorbar(reg.x , reg.y, yerr=reg.y_err , fmt='none')
+# plt.plot(reg.x, reg.y, "x")
+# plt.plot(reg.x, reg.y_reg)
+# plt.show()
 
 

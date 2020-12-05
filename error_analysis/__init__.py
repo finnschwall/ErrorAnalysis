@@ -2,8 +2,9 @@
 See also https://github.com/finnschwall/error_analysis
 """
 from collections import namedtuple
+
 from error_analysis.evar import *
-from error_analysis.operators import *
+# REMOVE BEFORE UPLOAD
 
 # for generating and formatting documentation
 # doc gen: pdoc3 --html -f --config show_source_code=False  error_analysis -o C:\Users\finns\Downloads\test2

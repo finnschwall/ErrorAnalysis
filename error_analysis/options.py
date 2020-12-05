@@ -9,7 +9,6 @@ e. g. calling a.to_get_expr(as_latex=False) will return as non latex string even
 If nothing is specified the assumed value will be options.as_latex.
 """
 
-# TODO implement fast mode
 # TODO implement max digits
 
 as_latex = True
@@ -52,9 +51,23 @@ max_digits = 8
 
 .. warning:: not working yet"""
 
-fast_mode = False
-"""Ignore expressions and just calculate. Significantly faster but doesn't allow
-printing of gauss max or own expression.
+correct_garbage_collection = False
+"""Decides wether to delete out of scope objects. 
 
-.. warning:: not working yet
+Working with library is far less error prone without correct gc. However correct gc massively improves memory usage.
+Examples
+----------
+If True this
+
+     a= evar(..)*10
+     print(a.get_expr())
+will fail.
+However this
+
+    a=evar(..)
+    a*=10
+    print(a.get_expr())
+will not. All functions which retrieve expressions will have to resolve their dependencies.
+In the first case the expression for a will be a = UnnamedVariable*10. Since UnnamedVariable has no direct reference 
+anymore, it will be deleted. In the second case, as still has an exisiting reference and won't be deleted.
 """

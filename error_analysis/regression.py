@@ -5,13 +5,12 @@ from scipy.optimize import curve_fit
 from error_analysis.evar import *
 
 
-# TODO add whatever regression
-# TODO add specific linear regression
-
 def __lin_func(x, m, b):
     return m * x + b
 
+
 # TODO add support for error on x axis
+# TODO make subclass for linreg which supports __str__
 class Regression:
     """
     evar wrapper for scipy.curve_fit. Also works on normals lists.
@@ -29,7 +28,8 @@ class Regression:
         plt.plot(reg.x, reg.y, "x")
         m, b = reg.func_args[0], reg.func_args[1]
     """
-    def __init__(self, func, x, y, error_mode=ErrorMode.COMBINED):
+
+    def __init__(self, func, x, y, p0=None, error_mode=ErrorMode.COMBINED):
         """
 
         Parameters
@@ -40,22 +40,24 @@ class Regression:
             x values
         y : list or error_analysis.evar.evar
             y values
-        error_mode : error_analysis.evar.ErrorMode
+        p0 : list, optional
+            Initial guess for the parameters
+        error_mode : error_analysis.evar.ErrorMode, optional
             Which error is considered in regression. ErrorMode.BOTH is not supported
         """
         if type(x) is evar:
             x_value = x.value
         else:
-            x_value = x
+            x_value = np.array(x)
         if type(y) is evar:
-            y_value = y.value
+            y_value = np.array(y.value)
         else:
             y_value = y
-            error_mode = None
+            error_mode = ErrorMode.NONE
         if len(x_value) != len(y_value):
             raise Exception("Array sizes don't match")
         if error_mode == ErrorMode.NONE:
-            popt, pcov = curve_fit(func, x.value, y.value)
+            popt, pcov = curve_fit(func, x_value, y_value, p0)
             sig = np.zeros(len(x_value))
         else:
             sig = None
@@ -68,9 +70,10 @@ class Regression:
             # scipy fails when one too small value is included
             min_val = y_value[np.argmin(y_value)] * 10 ** -3
             sig = [i + min_val for i in sig]
-            popt, pcov = curve_fit(func, x.value, y.value, sigma=sig, absolute_sigma=True)
+            popt, pcov = curve_fit(func, x_value, y_value, p0, sigma=sig, absolute_sigma=True)
         stat_err = np.sqrt(np.diag(pcov))
-
+        if not tools.is_number_list(stat_err)[0]:
+            stat_err = np.zeros(len(stat_err))
         self.func_args = []
         """evars with fit parameter values and errors."""
         for i in range(len(popt)):
@@ -87,7 +90,7 @@ class Regression:
         """errors which were applied for regression"""
 
 
-def lin_reg(x, y, error_mode=ErrorMode.COMBINED):
+def lin_reg(x, y, p0=None, error_mode=ErrorMode.COMBINED):
     """ Shortcut for linear regression
 
     Returns
@@ -99,7 +102,7 @@ def lin_reg(x, y, error_mode=ErrorMode.COMBINED):
     b : error_analysis.evar.evar
         offset
     """
-    reg = Regression(__lin_func, x, y, error_mode)
+    reg = Regression(__lin_func, x, y, p0, error_mode)
     m, b = reg.func_args[0], reg.func_args[1]
     m.set_name("m")
     b.set_name("b")
